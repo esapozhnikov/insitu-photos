@@ -1,0 +1,94 @@
+services:
+  db:
+    image: ankane/pgvector:latest
+    container_name: db
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track=all", "-c", "track_activity_query_size=4096"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-photoalbum}
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      ENABLE_DB_MONITORING: ${ENABLE_DB_MONITORING:-false}
+      DB_O11Y_PASSWORD: ${DB_O11Y_PASSWORD:-db_o11y_pass}
+    ports:
+      - "5433:5432"
+    volumes:
+      - /mnt/user/appdata/unraid-photo-album/db:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    # Remove this service if using an external DB
+
+  redis:
+    image: redis:7-alpine
+
+  api:
+    image: ghcr.io/esapozhnikov/insitu-photos-backend:sha-47f56c6
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://user:password@db:5432/photoalbum}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      PHOTO_ROOT: ${PHOTO_ROOT:-/photos}
+      CACHE_ROOT: ${CACHE_ROOT:-/cache}
+      ML_URL: ${ML_URL:-http://ml-service:3003}
+      SECRET_KEY: ${SECRET_KEY:-temporary_secret_key_change_me}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin_password}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-none}
+      OTEL_DEPLOYMENT_ENVIRONMENT: ${OTEL_DEPLOYMENT_ENVIRONMENT:-production}
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-1.0.0}
+    ports:
+      - "8001:8000"
+    volumes:
+      - /mnt/disk1:/photos:ro
+      - /mnt/user/appdata/unraid-photo-album/cache:/cache
+      - /mnt/user/appdata/unraid-photo-album/alembic.ini:/app/alembic.ini
+      - /mnt/user/appdata/unraid-photo-album/alembic:/app/alembic
+      - /mnt/user/appdata/unraid-photo-album/migrations:/app/alembic/versions
+      - /mnt/user/appdata/unraid-photo-album/start.sh:/app/start.sh
+      - /mnt/user/appdata/unraid-photo-album/start-worker.sh:/app/start-worker.sh
+    depends_on:
+      - db
+      - redis
+
+  worker:
+    image: ghcr.io/esapozhnikov/insitu-photos-backend:sha-47f56c6
+    command: ./start-worker.sh
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://user:password@db:5432/photoalbum}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      PHOTO_ROOT: ${PHOTO_ROOT:-/photos}
+      CACHE_ROOT: ${CACHE_ROOT:-/cache}
+      ML_URL: ${ML_URL:-http://ml-service:3003}
+      SECRET_KEY: ${SECRET_KEY:-temporary_secret_key_change_me}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin_password}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-none}
+      OTEL_DEPLOYMENT_ENVIRONMENT: ${OTEL_DEPLOYMENT_ENVIRONMENT:-production}
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-1.0.0}
+    volumes:
+      - /mnt/disk1:/photos:ro
+      - /mnt/user/appdata/unraid-photo-album/cache:/cache
+      - /mnt/user/appdata/unraid-photo-album/alembic.ini:/app/alembic.ini
+      - /mnt/user/appdata/unraid-photo-album/alembic:/app/alembic
+      - /mnt/user/appdata/unraid-photo-album/migrations:/app/alembic/versions
+      - /mnt/user/appdata/unraid-photo-album/start.sh:/app/start.sh
+      - /mnt/user/appdata/unraid-photo-album/start-worker.sh:/app/start-worker.sh
+    depends_on:
+      - db
+      - redis
+
+  ml-service:
+    image: ghcr.io/immich-app/immich-machine-learning:v2.7.5
+    # For GPU (Nvidia):
+    # image: ghcr.io/immich-app/immich-machine-learning:v2.7.5-cuda
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  frontend:
+    image: ghcr.io/esapozhnikov/insitu-photos-frontend:sha-c2e15b8
+    ports:
+      - "3001:80"
+    depends_on:
+      - api
