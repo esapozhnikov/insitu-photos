@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from sqlalchemy.orm import Session
 from datetime import timedelta
-from ... import crud, schemas, auth, database, config, models
+from ... import crud, schemas, auth, database, models
 from ...telemetry import tracer
 
 router = APIRouter()

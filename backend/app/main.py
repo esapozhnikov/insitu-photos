@@ -1,3 +1,7 @@
+﻿from .telemetry import setup_telemetry
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from .database import engine, Base, init_db, SessionLocal
@@ -51,10 +55,6 @@ async def lifespan(app: FastAPI):
             db.close()
     yield
 
-from .telemetry import setup_telemetry
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
 # Initialize Telemetry
 setup_telemetry("insitu-photos-backend")

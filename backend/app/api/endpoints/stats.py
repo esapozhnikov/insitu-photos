@@ -23,7 +23,7 @@ def get_stats(db: Session = Depends(get_db)):
         "total_albums": db.query(models.Album).count(),
         "total_faces": db.query(models.Face).count(),
         "total_people": db.query(models.Person).count(),
-        "processed_faces": db.query(models.Face).filter(models.Face.person_id != None).count(),
+        "processed_faces": db.query(models.Face).filter(models.Face.person_id is not None).count(),
         "photos_by_year": photos_by_year
     }
 
@@ -38,14 +38,14 @@ def get_system_status(db: Session = Depends(get_db)):
     full_rescan_progress = crud.get_setting(db, "ml_full_rescan_progress")
     
     # Add detailed counts for better diagnostics
-    unassigned_with_embeddings = db.query(models.Face).filter(
-        models.Face.person_id == None,
-        models.Face.embedding != None
+    db.query(models.Face).filter(
+        models.Face.person_id is None,
+        models.Face.embedding is not None
     ).count()
     
     unassigned_without_embeddings = db.query(models.Face).filter(
-        models.Face.person_id == None,
-        models.Face.embedding == None
+        models.Face.person_id is None,
+        models.Face.embedding is None
     ).count()
     
     return {

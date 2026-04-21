@@ -16,7 +16,7 @@ def generate_thumbnails(photo_path: str, checksum: str):
         try:
             from PIL import ImageOps
             img = ImageOps.exif_transpose(img)
-        except:
+        except Exception:
             pass
 
         for size_name, dimensions in THUMBNAIL_SIZES.items():
@@ -48,7 +48,7 @@ def generate_face_thumbnail(photo_path: str, face_id: int, bounding_box: dict):
         try:
             from PIL import ImageOps
             img = ImageOps.exif_transpose(img)
-        except:
+        except Exception:
             pass
             
         width, height = img.size

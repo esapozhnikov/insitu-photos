@@ -18,7 +18,7 @@ def get_people(db: Session = Depends(get_db)):
             # Get one face thumbnail for each person
             face = db.query(models.Face).filter(
                 models.Face.person_id == person.id, 
-                models.Face.thumbnail_path != None
+                models.Face.thumbnail_path is not None
             ).first()
             if face:
                 person.thumbnail_path = face.thumbnail_path
@@ -36,7 +36,7 @@ def create_person(person: schemas.PersonCreate, db: Session = Depends(get_db)):
 
 @router.get("/unnamed-faces", response_model=List[schemas.FaceResponse])
 def get_unnamed_faces(db: Session = Depends(get_db)):
-    return db.query(models.Face).filter(models.Face.person_id == None).limit(50).all()
+    return db.query(models.Face).filter(models.Face.person_id is None).limit(50).all()
 
 @router.post("/faces", response_model=List[schemas.FaceResponse])
 def get_faces(face_ids: List[int], db: Session = Depends(get_db)):
@@ -54,14 +54,14 @@ def get_unnamed_clusters(db: Session = Depends(get_db), limit: int = 1000):
     # 1. Fetch unnamed faces with embeddings, limited to avoid O(N^2) explosion
     # In a real app, we'd use a vector index or a proper clustering algorithm like DBSCAN
     unnamed_faces = db.query(models.Face).filter(
-        models.Face.person_id == None,
-        models.Face.embedding != None
+        models.Face.person_id is None,
+        models.Face.embedding is not None
     ).limit(limit).all()
     
     # 2. Also fetch faces WITHOUT embeddings (failed processing)
     failed_faces = db.query(models.Face).filter(
-        models.Face.person_id == None,
-        models.Face.embedding == None
+        models.Face.person_id is None,
+        models.Face.embedding is None
     ).limit(100).all()
 
     logging.info(f"Clustering up to {len(unnamed_faces)} unnamed faces (plus {len(failed_faces)} failed)")

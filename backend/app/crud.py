@@ -1,3 +1,4 @@
+﻿from .auth import get_password_hash
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import List
@@ -92,8 +93,8 @@ def find_similar_person(db: Session, embedding: list, threshold: float = 0.15):
         models.Face.person_id,
         models.Face.embedding.cosine_distance(embedding).label("distance")
     ).filter(
-        models.Face.person_id != None,
-        models.Face.embedding != None
+        models.Face.person_id is not None,
+        models.Face.embedding is not None
     ).order_by("distance").first()
 
     if result and result.distance < threshold:
@@ -102,7 +103,7 @@ def find_similar_person(db: Session, embedding: list, threshold: float = 0.15):
     return None
 
 def get_unassigned_faces(db: Session):
-    return db.query(models.Face).filter(models.Face.person_id == None).all()
+    return db.query(models.Face).filter(models.Face.person_id is None).all()
 
 def reset_faces(db: Session):
     # 1. Nullify person references in Face table
@@ -318,7 +319,6 @@ def update_setting(db: Session, key: str, value: str):
     return db_setting
 
 
-from .auth import get_password_hash
 
 def create_user(db: Session, user: schemas.UserCreate):
     db_user = models.User(

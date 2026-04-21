@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.database import Base, get_db
-from app import models, auth, crud, schemas
+from app import models, crud, schemas
 
 # Setup in-memory sqlite for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_api.db"

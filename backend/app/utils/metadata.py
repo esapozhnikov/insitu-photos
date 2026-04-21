@@ -40,7 +40,7 @@ def extract_metadata(file_path: str):
                 try:
                     # Handle cases with or without timezone
                     timestamp = datetime.strptime(dt_str[:19], '%Y:%m:%d %H:%M:%S')
-                except:
+                except Exception:
                     pass
                     
             with Image.open(file_path) as img:
@@ -53,9 +53,11 @@ def extract_metadata(file_path: str):
             long_ref = metadata.get('EXIF:GPSLongitudeRef', 'E')
             
             if gps_lat is not None:
-                if lat_ref == 'S': gps_lat = -abs(gps_lat)
+                if lat_ref == 'S':
+                    gps_lat = -abs(gps_lat)
             if gps_long is not None:
-                if long_ref == 'W': gps_long = -abs(gps_long)
+                if long_ref == 'W':
+                    gps_long = -abs(gps_long)
 
             # Extract people from XMP Regions or Keywords
             people = []

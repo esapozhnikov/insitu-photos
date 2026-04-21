@@ -1,5 +1,4 @@
 from app.database import Base, engine
-from app.models import Photo
 
 def test_create_tables():
     # This will create all tables in the database

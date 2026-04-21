@@ -88,7 +88,7 @@ def process_faces_task(photo_id: int):
                 if isinstance(embedding, str):
                     try:
                         embedding = json.loads(embedding)
-                    except:
+                    except Exception:
                         pass
 
                 # Automated recognition: find similar existing person
@@ -141,8 +141,8 @@ def re_run_recognition_task():
             span.set_attribute("ml.threshold", threshold_val)
 
             faces = db.query(models.Face).filter(
-                models.Face.person_id == None,
-                models.Face.embedding != None
+                models.Face.person_id is None,
+                models.Face.embedding is not None
             ).all()
             
             total = len(faces)
@@ -252,7 +252,7 @@ def index_folder_task(folder_path: str):
                 if is_enabled and is_enabled.value.lower() == "true":
                     smart_albums = db.query(models.Album).filter(
                         models.Album.linked_folder_id == folder.id,
-                        models.Album.is_smart_sync == True
+                        models.Album.is_smart_sync
                     ).all()
 
             photos = scan_directory(folder_path)
@@ -303,7 +303,7 @@ def index_folder_task(folder_path: str):
                     if folder:
                         folder.scan_error = error_msg
                         db.commit()
-                except:
+                except Exception:
                     pass
         finally:
             if folder_id:

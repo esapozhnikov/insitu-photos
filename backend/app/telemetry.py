@@ -20,7 +20,7 @@ def setup_telemetry(service_name: str):
         # If it's already a TracerProvider (and not the default Proxy), we skip
         if not isinstance(trace.get_tracer_provider(), trace.ProxyTracerProvider):
             return trace.get_tracer(service_name)
-    except:
+    except Exception:
         pass
 
     # Base URL for the Alloy collector

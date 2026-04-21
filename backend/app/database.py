@@ -23,7 +23,7 @@ def init_db():
             conn.execute(text("ALTER TABLE albums ADD COLUMN IF NOT EXISTS cover_photo_id INTEGER REFERENCES photos(id)"))
             conn.execute(text("ALTER TABLE folders ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'idle'"))
             conn.execute(text("ALTER TABLE folders ADD COLUMN IF NOT EXISTS scan_error TEXT"))
-        except Exception as e:
+        except Exception:
             # Table might not exist yet, which is fine, create_all will handle it
             pass
             

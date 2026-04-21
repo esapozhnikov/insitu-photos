@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.database import Base, get_db
-from app import models, auth, crud, schemas
+from app import models, crud, schemas
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_rbac.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
@@ -31,8 +31,10 @@ def get_token(client, username):
 @pytest.fixture
 def client(db):
     def override_get_db():
-        try: yield db
-        finally: pass
+        try:
+            yield db
+        finally:
+            pass
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
         yield c
