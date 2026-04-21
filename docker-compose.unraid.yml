@@ -14,7 +14,7 @@ services:
       - "5433:5432"
     volumes:
       - /mnt/user/appdata/insitu-photos/db:/var/lib/postgresql/data
-      - ./postgres-init:/docker-entrypoint-initdb.d
+      - /mnt/user/appdata/insitu-photos/postgres-init:/docker-entrypoint-initdb.d
     # Remove this service if using an external DB
 
   redis:
