@@ -1,66 +1,83 @@
 import asyncio
-import json
 import logging
-import os
-import shutil
+import json
 from datetime import datetime
-from opentelemetry import trace
-from .worker import celery_app
+from sqlalchemy.orm import Session
 from .database import SessionLocal
+from . import crud, models
+from .worker import celery_app
 from .utils.scanner import scan_directory
-from .utils.metadata import get_checksum, extract_metadata
 from .utils.thumbnails import generate_thumbnails, generate_face_thumbnail
 from .utils.ml import detect_faces
-from .telemetry import tracer, meter
-from . import crud, models, config
+from .telemetry import tracer, faces_detected_counter, photos_processed_counter, faces_processed_counter, faces_recognized_counter
 
 logger = logging.getLogger(__name__)
 
-# ML Performance Counters
-faces_detected_counter = meter.create_counter(
-    "ml.faces_detected",
-    unit="1",
-    description="Number of faces detected in photos"
-)
-faces_recognized_counter = meter.create_counter(
-    "ml.faces_recognized",
-    unit="1",
-    description="Number of faces assigned to a person"
-)
-faces_processed_counter = meter.create_counter(
-    "ml.faces_processed",
-    unit="1",
-    description="Total number of faces processed during ML tasks"
-)
-
 @celery_app.task
-def generate_thumbnails_task(photo_id: int):
-    with tracer.start_as_current_span("tasks.generate_thumbnails") as span:
-        span.set_attribute("photo.id", photo_id)
+def scan_folder_task(folder_id: int):
+    with tracer.start_as_current_span("tasks.scan_folder") as span:
         db = SessionLocal()
         try:
-            db_photo = db.query(models.Photo).filter(models.Photo.id == photo_id).first()
-            if db_photo:
-                thumbnails = generate_thumbnails(db_photo.physical_path, db_photo.checksum)
-                crud.update_photo_thumbnails(db, photo_id, thumbnails)
+            db_folder = db.query(models.Folder).filter(models.Folder.id == folder_id).first()
+            if not db_folder:
+                return
+
+            db_folder.status = "scanning"
+            db_folder.scan_error = None
+            db.commit()
+
+            logger.info(f"Starting scan for folder: {db_folder.path}")
+            
+            # Scan filesystem
+            photos_found = scan_directory(db_folder.path)
+            span.set_attribute("photos.found_count", len(photos_found))
+            
+            for photo_path in photos_found:
+                try:
+                    # Basic photo record creation
+                    photo_data = crud.process_photo_file(db, photo_path)
+                    if photo_data:
+                        # Trigger thumbnail and face detection for new photos
+                        process_photo_assets_task.delay(photo_data.id)
+                        photos_processed_counter.add(1)
+                except Exception as e:
+                    logger.error(f"Error processing photo {photo_path}: {e}")
+
+            db_folder.last_scanned_at = datetime.now()
+            db_folder.status = "idle"
+            db.commit()
+            logger.info(f"Finished scan for folder: {db_folder.path}")
+
         except Exception as e:
-            logger.error(f"Error in generate_thumbnails_task for photo {photo_id}: {e}")
+            logger.error(f"Error during scan task for folder {folder_id}: {e}")
+            if db_folder:
+                db_folder.status = "error"
+                db_folder.scan_error = str(e)
+                db.commit()
             span.record_exception(e)
         finally:
             db.close()
 
 @celery_app.task
-def process_faces_task(photo_id: int):
-    with tracer.start_as_current_span("tasks.process_faces") as span:
-        span.set_attribute("photo.id", photo_id)
+def process_photo_assets_task(photo_id: int):
+    with tracer.start_as_current_span("tasks.process_photo_assets") as span:
         db = SessionLocal()
         try:
             db_photo = db.query(models.Photo).filter(models.Photo.id == photo_id).first()
             if not db_photo:
-                logger.warning(f"Photo {photo_id} not found for face processing")
                 return
 
-            # Fetch ML settings
+            # 1. Generate Thumbnails
+            logger.info(f"Generating thumbnails for photo {photo_id}")
+            thumbnails = generate_thumbnails(db_photo.physical_path, db_photo.checksum)
+            db_photo.thumbnail_small = thumbnails.get("small")
+            db_photo.thumbnail_large = thumbnails.get("large")
+            db.commit()
+
+            # 2. Face Detection
+            logger.info(f"Detecting faces in photo {photo_id}")
+            
+            # Get ML settings
             model_name = crud.get_setting(db, "ml_model_name")
             min_score = crud.get_setting(db, "ml_min_score")
             threshold = crud.get_setting(db, "ml_recognition_threshold")
@@ -118,9 +135,12 @@ def process_faces_task(photo_id: int):
                     )
                     crud.update_face_thumbnail(db, db_face.id, thumb_path)
                 except Exception as e:
-                    logger.error(f"Error generating face thumbnail for {db_face.id}: {e}")
+                    logger.error(f"Error generating face thumbnail for face {db_face.id}: {e}")
+
+            db.commit()
+
         except Exception as e:
-            logger.error(f"Error in process_faces_task for photo {photo_id}: {e}")
+            logger.error(f"Error processing assets for photo {photo_id}: {e}")
             span.record_exception(e)
         finally:
             db.close()
@@ -140,38 +160,39 @@ def re_run_recognition_task():
             threshold_val = float(threshold.value) if threshold else 0.15
             span.set_attribute("ml.threshold", threshold_val)
 
+            # Process ALL faces with embeddings to ensure thorough re-evaluation
             faces = db.query(models.Face).filter(
-                
                 models.Face.embedding != None # noqa: E711
             ).all()
             
             total = len(faces)
-            span.set_attribute("faces.total_unassigned", total)
+            span.set_attribute("faces.total_to_process", total)
             logger.info(f"Starting background re-recognition for {total} faces...")
             
             count = 0
             for i, face in enumerate(faces):
-                # Create a small sub-span for each face to track individual performance
-                # and allow the span metrics to calculate "faces per second"
                 with tracer.start_as_current_span("tasks.re_run_recognition.face"):
                     faces_processed_counter.add(1)
                     if face.embedding is not None:
+                        # Attempt to find a match among ALREADY ASSIGNED faces
                         person_id = crud.find_similar_person(db, face.embedding, threshold=threshold_val)
-                        if person_id:
+                        
+                        # Only update if we found a match and it is different or face was unassigned
+                        if person_id and person_id != face.person_id:
                             face.person_id = person_id
                             count += 1
                             faces_recognized_counter.add(1)
 
                 if (i + 1) % 100 == 0 or (i + 1) == total:
-                    progress = f"Processed {i + 1}/{total} faces, {count} assigned so far..."
+                    progress = f"Processed {i + 1}/{total} faces, {count} assignments updated..."
                     crud.update_setting(db, "ml_re_recognition_progress", progress)
                     logger.info(progress)
-                    db.commit() # Commit periodically to show progress
+                    db.commit()
             
             db.commit()
-            span.set_attribute("faces.newly_assigned", count)
-            crud.update_setting(db, "ml_re_recognition_progress", f"Complete! Assigned {count} faces.")
-            logger.info(f"Re-recognition complete. Assigned {count} faces.")
+            span.set_attribute("faces.updated_assignments", count)
+            crud.update_setting(db, "ml_re_recognition_progress", f"Complete! Updated {count} assignments.")
+            logger.info(f"Re-recognition complete. Updated {count} assignments.")
         except Exception as e:
             logger.error(f"Error during re-recognition task: {e}")
             span.record_exception(e)
@@ -185,136 +206,78 @@ def full_face_rescan_task():
     with tracer.start_as_current_span("tasks.full_face_rescan") as span:
         db = SessionLocal()
         try:
-            # Mark as running
             crud.update_setting(db, "ml_full_rescan_running", "true")
-            crud.update_setting(db, "ml_full_rescan_progress", "Clearing database...")
-
-            # 1. Clear database face/person data
-            crud.reset_faces(db)
-            logger.info("Cleared all face and person records for full rescan")
+            crud.update_setting(db, "ml_full_rescan_progress", "Clearing existing faces...")
             
-            # 2. Clear face thumbnails
-            cache_root = config.settings.cache_root
-            faces_dir = os.path.join(cache_root, "faces")
-            if os.path.exists(faces_dir):
-                for filename in os.listdir(faces_dir):
-                    file_path = os.path.join(faces_dir, filename)
-                    try:
-                        if os.path.isfile(file_path) or os.path.islink(file_path):
-                            os.unlink(file_path)
-                        elif os.path.isdir(file_path):
-                            shutil.rmtree(file_path)
-                    except Exception as e:
-                        logger.error(f'Failed to delete {file_path}. Reason: {e}')
-
-            # 3. Queue face processing for all photos
-            photos = db.query(models.Photo).all()
-            total = len(photos)
-            span.set_attribute("photos.count", total)
-            logger.info(f"Queuing face processing for {total} photos...")
+            # 1. Clear all existing faces (Danger Zone!)
+            db.query(models.Face).delete()
+            db.commit()
             
-            for i, photo in enumerate(photos):
-                process_faces_task.delay(photo.id)
-                if (i + 1) % 100 == 0 or (i + 1) == total:
-                    crud.update_setting(db, "ml_full_rescan_progress", f"Queuing: {i + 1}/{total} photos...")
-
-            crud.update_setting(db, "ml_full_rescan_progress", f"Processing {total} photos in background...")
-            logger.info(f"Full facial rescan queuing complete for {total} photos.")
+            # 2. Get all photo IDs
+            photo_ids = [p.id for p in db.query(models.Photo.id).all()]
+            total = len(photo_ids)
+            span.set_attribute("photos.total", total)
+            
+            for i, photo_id in enumerate(photo_ids):
+                process_photo_assets_task(photo_id) # Run synchronously in this task
+                
+                if (i + 1) % 10 == 0 or (i + 1) == total:
+                    progress = f"Rescanned {i + 1}/{total} photos..."
+                    crud.update_setting(db, "ml_full_rescan_progress", progress)
+                    db.commit()
+            
+            crud.update_setting(db, "ml_full_rescan_progress", "Complete!")
         except Exception as e:
-            logger.error(f"Error during full rescan task: {e}")
+            logger.error(f"Error during full face rescan: {e}")
             span.record_exception(e)
+            db.rollback()
         finally:
-            # NOTE: We set this to false when queuing is done. 
-            # The individual process_faces_tasks will continue.
             crud.update_setting(db, "ml_full_rescan_running", "false")
             db.close()
 
 @celery_app.task
-def index_folder_task(folder_path: str):
-    with tracer.start_as_current_span("tasks.index_folder") as span:
-        span.set_attribute("folder.path", folder_path)
-        logger.info(f"Starting index_folder_task for {folder_path}")
+def smart_sync_folder_task(folder_id: int):
+    """Automatically creates albums based on folder names and keeps them in sync."""
+    with tracer.start_as_current_span("tasks.smart_sync_folder") as span:
         db = SessionLocal()
-        folder_id = None
         try:
-            # Check if this folder is linked to any Smart Sync albums
-            folder = crud.get_folder_by_path(db, folder_path)
-            if folder:
-                folder_id = folder.id
-                folder.status = "scanning"
-                folder.scan_error = None # Clear previous error
+            folder = db.query(models.Folder).filter(models.Folder.id == folder_id).first()
+            if not folder:
+                return
+
+            # Find or create smart albums for this folder
+            # For simplicity, we just ensure one album exists for the folder name
+            folder_name = folder.path.split("/")[-1] or "Photos"
+            
+            # Look for albums linked to this folder
+            smart_albums = db.query(models.Album).filter(
+                models.Album.linked_folder_id == folder.id,
+                models.Album.is_smart_sync == True # noqa: E712
+            ).all()
+
+            if not smart_albums:
+                # Create default smart album
+                album = models.Album(
+                    name=folder_name,
+                    description=f"Smart synced from {folder.path}",
+                    is_smart_sync=True,
+                    linked_folder_id=folder.id
+                )
+                db.add(album)
                 db.commit()
+                db.refresh(album)
+                smart_albums = [album]
 
-            smart_albums = []
-            if folder:
-                # Check if global smart sync is enabled
-                is_enabled = crud.get_setting(db, "smart_sync_enabled")
-                if is_enabled and is_enabled.value.lower() == "true":
-                    smart_albums = db.query(models.Album).filter(
-                        models.Album.linked_folder_id == folder.id,
-                        models.Album.is_smart_sync
-                    ).all()
-
-            photos = scan_directory(folder_path)
-            span.set_attribute("photo.count", len(photos))
-            logger.info(f"Found {len(photos)} photos in {folder_path}")
-
-            for i, path in enumerate(photos):
-                try:
-                    db_photo = crud.get_photo_by_path(db, path)
-                    if not db_photo:
-                        with tracer.start_as_current_span("tasks.process_new_photo") as photo_span:
-                            photo_span.set_attribute("file.path", path)
-                            checksum = get_checksum(path)
-                            metadata = extract_metadata(path)
-                            # Remove 'people' as it's not a field in the Photo model
-                            metadata.pop("people", None)
-                            photo_data = {
-                                "physical_path": path,
-                                "checksum": checksum,
-                                **metadata
-                            }
-                            db_photo = crud.create_photo(db, photo_data)
-                            generate_thumbnails_task.delay(db_photo.id)
-                            process_faces_task.delay(db_photo.id)
-
-                    # Ensure photo is in smart albums
-                    for album in smart_albums:
-                        if db_photo not in album.photos:
-                            album.photos.append(db_photo)
-
-                    # Periodically commit to show progress and keep memory low
-                    if (i + 1) % 100 == 0:
-                        db.commit()
-                        logger.info(f"Processed {i + 1}/{len(photos)} photos...")
-                except Exception as e:
-                    logger.error(f"Error processing photo {path}: {e}")
-                    continue
-
+            # Sync photos (add all photos from this folder to its smart albums)
+            photos = db.query(models.Photo).filter(models.Photo.physical_path.like(f"{folder.path}%")).all()
+            for album in smart_albums:
+                for photo in photos:
+                    if photo not in album.photos:
+                        album.photos.append(photo)
+            
             db.commit()
-            logger.info(f"Finished processing all {len(photos)} photos in {folder_path}")
         except Exception as e:
-            error_msg = str(e)
+            logger.error(f"Error in smart sync for folder {folder_id}: {e}")
             span.record_exception(e)
-            logger.error(f"Critical error during index_folder_task for {folder_path}: {error_msg}")
-            if folder_id:
-                try:
-                    folder = db.query(models.Folder).filter(models.Folder.id == folder_id).first()
-                    if folder:
-                        folder.scan_error = error_msg
-                        db.commit()
-                except Exception:
-                    pass
         finally:
-            if folder_id:
-                try:
-                    folder = db.query(models.Folder).filter(models.Folder.id == folder_id).first()
-                    if folder:
-                        folder.status = "idle"
-                        folder.last_scanned_at = datetime.utcnow()
-                        db.commit()
-                        logger.info(f"Folder {folder_id} status reset to idle")
-                except Exception as e:
-                    logger.error(f"Error resetting folder status: {e}")
             db.close()
-
