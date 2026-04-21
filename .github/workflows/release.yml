@@ -1,0 +1,68 @@
+﻿name: Release & Publish
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME_BE: ${{ github.repository }}-backend
+  IMAGE_NAME_FE: ${{ github.repository }}-frontend
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine Version Bump
+        id: version
+        run: |
+          # Get the branch name from the merge commit message or head
+          # For pushes to main, we look at the last PR merge if possible
+          BRANCH=$(git log -1 --pretty=%B | grep -oP '(?<=from ).*' || echo "fix/auto")
+          if [[ $BRANCH == major/* ]]; then
+            echo "bump=major" >> $GITHUB_OUTPUT
+          elif [[ $BRANCH == feat/* ]]; then
+            echo "bump=minor" >> $GITHUB_OUTPUT
+          else
+            echo "bump=patch" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Bump version and push tag
+        id: tag_action
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: ${{ steps.version.outputs.bump }}
+
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BE }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BE }}:${{ steps.tag_action.outputs.new_tag }}
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FE }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FE }}:${{ steps.tag_action.outputs.new_tag }}
+
