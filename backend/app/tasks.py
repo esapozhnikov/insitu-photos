@@ -141,8 +141,8 @@ def re_run_recognition_task():
             span.set_attribute("ml.threshold", threshold_val)
 
             faces = db.query(models.Face).filter(
-                models.Face.person_id is None,
-                models.Face.embedding is not None
+                
+                models.Face.embedding != None # noqa: E711
             ).all()
             
             total = len(faces)
