@@ -4,7 +4,7 @@ from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from .database import engine, Base, init_db, SessionLocal
+from .database import engine, init_db, SessionLocal
 from .api.endpoints import folders, photos, people, albums, stats, admin, search, settings as api_settings, auth, users
 from .config import settings
 from . import crud, models, schemas
