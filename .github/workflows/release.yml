@@ -66,3 +66,11 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FE }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FE }}:${{ steps.tag_action.outputs.new_tag }}
 
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag_action.outputs.new_tag }}
+          name: Release ${{ steps.tag_action.outputs.new_tag }}
+          body: ${{ steps.tag_action.outputs.changelog }}
+
