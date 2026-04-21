@@ -1,4 +1,4 @@
-﻿services:
+services:
   db:
     container_name: insitu-photos-db
     image: ankane/pgvector:latest
@@ -23,7 +23,7 @@
 
   api:
     container_name: insitu-photos-api
-    image: ghcr.io/esapozhnikov/insitu-photos-backend:sha-47f56c6
+    image: ghcr.io/esapozhnikov/insitu-photos-backend:latest
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://user:password@db:5432/photoalbum}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
@@ -47,7 +47,7 @@
 
   worker:
     container_name: insitu-photos-worker
-    image: ghcr.io/esapozhnikov/insitu-photos-backend:sha-47f56c6
+    image: ghcr.io/esapozhnikov/insitu-photos-backend:latest
     command: ./start-worker.sh
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://user:password@db:5432/photoalbum}
@@ -83,7 +83,7 @@
 
   frontend:
     container_name: insitu-photos-ui
-    image: ghcr.io/esapozhnikov/insitu-photos-frontend:sha-c2e15b8
+    image: ghcr.io/esapozhnikov/insitu-photos-frontend:latest
     ports:
       - "3001:80"
     depends_on:
