@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'leaflet/dist/leaflet.css';
@@ -6,22 +6,6 @@ import { Photo } from '../types';
 import L from 'leaflet';
 import { Maximize2, RefreshCw } from 'lucide-react';
 import { api } from '../api/client';
-
-// Custom DivIcon for clusters
-const createClusterCustomIcon = (cluster: any) => {
-  return L.divIcon({
-    html: `<div class="bg-blue-600 text-white font-bold rounded-full w-10 h-10 flex items-center justify-center border-4 border-white/20 shadow-2xl transition-transform hover:scale-110">${cluster.getChildCount()}</div>`,
-    className: 'custom-marker-cluster',
-    iconSize: L.point(40, 40, true),
-  });
-};
-
-const PhotoMarkerIcon = L.divIcon({
-  html: '<div class="w-5 h-5 bg-blue-500 rounded-full border-2 border-white shadow-xl animate-pulse ring-4 ring-blue-500/20"></div>',
-  className: 'photo-marker',
-  iconSize: [20, 20],
-  iconAnchor: [10, 10]
-});
 
 interface MapViewProps {
   onPhotoClick: (photo: Photo, index: number, allPhotos: Photo[]) => void;
@@ -33,6 +17,25 @@ export const MapView: React.FC<MapViewProps> = ({
 }) => {
   const [geolocatedPhotos, setGeolocatedPhotos] = useState<Photo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Initialize icons inside the component to avoid 'L is not defined' during SSR or early execution
+  const photoMarkerIcon = useMemo(() => {
+    if (typeof L === 'undefined') return null;
+    return L.divIcon({
+      html: '<div class="w-5 h-5 bg-blue-500 rounded-full border-2 border-white shadow-xl animate-pulse ring-4 ring-blue-500/20"></div>',
+      className: 'photo-marker',
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
+  }, []);
+
+  const createClusterCustomIcon = (cluster: any) => {
+    return L.divIcon({
+      html: `<div class="bg-blue-600 text-white font-bold rounded-full w-10 h-10 flex items-center justify-center border-4 border-white/20 shadow-2xl transition-transform hover:scale-110">${cluster.getChildCount()}</div>`,
+      className: 'custom-marker-cluster',
+      iconSize: L.point(40, 40, true),
+    });
+  };
 
   useEffect(() => {
     const fetchPhotos = async () => {
@@ -55,7 +58,6 @@ export const MapView: React.FC<MapViewProps> = ({
     }
     
     const markers = cluster.getAllChildMarkers();
-    // Retrieve photo data from marker options (attached via event handler or title lookup)
     const photosInCluster: Photo[] = markers
       .map((m: any) => {
         if (m.options.photo) return m.options.photo;
@@ -70,13 +72,11 @@ export const MapView: React.FC<MapViewProps> = ({
   };
 
   const handleMarkerClick = async (photo: Photo) => {
-    // We need the full photo object (with people/tags/etc) for the modal
     try {
       const fullPhoto = await api.getPhoto(photo.id);
       onPhotoClick(fullPhoto, 0, [fullPhoto]);
     } catch (err) {
       console.error("Error fetching full photo details:", err);
-      // Fallback to what we have
       onPhotoClick(photo, 0, [photo]);
     }
   };
@@ -98,7 +98,7 @@ export const MapView: React.FC<MapViewProps> = ({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
         
-        {!isLoading && (
+        {!isLoading && photoMarkerIcon && (
           <MarkerClusterGroup
             chunkedLoading
             iconCreateFunction={createClusterCustomIcon}
@@ -120,11 +120,10 @@ export const MapView: React.FC<MapViewProps> = ({
                 <Marker 
                   key={photo.id} 
                   position={[lat, lng]} 
-                  icon={PhotoMarkerIcon}
+                  icon={photoMarkerIcon}
                   title={photo.id.toString()}
                   eventHandlers={{
                     add: (e) => {
-                      // Robustly attach photo data to the Leaflet marker object
                       e.target.options.photo = photo;
                     }
                   }}
@@ -137,7 +136,7 @@ export const MapView: React.FC<MapViewProps> = ({
                       >
                         {photo.thumbnail_small ? (
                           <img 
-                            src={`/cache/${photo.thumbnail_small}`} 
+                            src={'/cache/' + photo.thumbnail_small} 
                             className="w-full h-40 object-cover transition-transform duration-500 group-hover:scale-110" 
                             alt="" 
                           />
@@ -174,4 +173,3 @@ export const MapView: React.FC<MapViewProps> = ({
     </div>
   );
 };
-
