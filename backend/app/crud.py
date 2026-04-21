@@ -1,4 +1,4 @@
-﻿from .auth import get_password_hash
+from .auth import get_password_hash
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import List
@@ -93,8 +93,8 @@ def find_similar_person(db: Session, embedding: list, threshold: float = 0.15):
         models.Face.person_id,
         models.Face.embedding.cosine_distance(embedding).label("distance")
     ).filter(
-        models.Face.person_id is not None,
-        models.Face.embedding is not None
+        models.Face.person_id != None, # noqa: E711
+        models.Face.embedding != None # noqa: E711
     ).order_by("distance").first()
 
     if result and result.distance < threshold:

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { Folder, Search, HardDrive, RefreshCw, AlertTriangle, CheckCircle2, Play, Trash2, Database, Shield, User as UserIcon, Users as UsersIcon } from 'lucide-react';
 import { FileBrowserModal } from './FileBrowserModal';
@@ -201,23 +201,44 @@ const AdminView: React.FC = () => {
                     <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       {setting.key.replace('ml_', '').replace(/_/g, ' ')}
                     </label>
-                    <input
-                      type="text"
-                      value={setting.value}
-                      onChange={async (e) => {
-                        const newVal = e.target.value;
-                        setSettings(prev => prev.map(s => s.key === setting.key ? { ...s, value: newVal } : s));
-                      }}
-                      onBlur={async (e) => {
-                        try {
-                          await api.updateSetting(setting.key, e.target.value);
-                          showStatus(`Updated ${setting.key}`, 'success');
-                        } catch (e) {
-                          showStatus('Failed to update setting', 'error');
-                        }
-                      }}
-                      className="w-full bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600"
-                    />
+                    {setting.key === 'ml_model_name' ? (
+                      <select
+                        value={setting.value}
+                        onChange={async (e) => {
+                          const newVal = e.target.value;
+                          setSettings(prev => prev.map(s => s.key === setting.key ? { ...s, value: newVal } : s));
+                          try {
+                            await api.updateSetting(setting.key, newVal);
+                            showStatus(`Updated ${setting.key}`, 'success');
+                          } catch (e) {
+                            showStatus('Failed to update setting', 'error');
+                          }
+                        }}
+                        className="w-full bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      >
+                        <option value="buffalo_s">Buffalo S (Small, Fast)</option>
+                        <option value="buffalo_m">Buffalo M (Medium)</option>
+                        <option value="buffalo_l">Buffalo L (Large, Accurate)</option>
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={setting.value}
+                        onChange={(e) => {
+                          const newVal = e.target.value;
+                          setSettings(prev => prev.map(s => s.key === setting.key ? { ...s, value: newVal } : s));
+                        }}
+                        onBlur={async (e) => {
+                          try {
+                            await api.updateSetting(setting.key, e.target.value);
+                            showStatus(`Updated ${setting.key}`, 'success');
+                          } catch (e) {
+                            showStatus('Failed to update setting', 'error');
+                          }
+                        }}
+                        className="w-full bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      />
+                    )}
                   </div>
                 ))}
               </div>
