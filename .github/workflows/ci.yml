@@ -1,4 +1,4 @@
-﻿name: CI - Quality & Security
+name: CI - Quality & Security
 
 on:
   pull_request:
@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: "20"
       - name: Install Frontend Deps
-        run: cd frontend && npm install
+        run: cd frontend && npm install --legacy-peer-deps
       - name: Lint Frontend (ESLint)
         run: cd frontend && npm run lint || true # Allow warning for now if needed
 
