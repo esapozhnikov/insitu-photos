@@ -11,7 +11,6 @@
 *Read-only indexing that never touches, moves, or modifies your original files.*
 
 ## 📖 Table of Contents
-* [✨ Features](#-features)
 * [📸 Showcase](#-showcase)
 * [🚀 Quick Start](#-quick-start)
 * [🏔️ Unraid Setup](#-unraid-setup)
