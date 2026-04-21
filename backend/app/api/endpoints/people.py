@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 import logging
+import json
 from ...database import get_db
 from ... import crud, schemas, models, auth
 
@@ -18,7 +19,7 @@ def get_people(db: Session = Depends(get_db)):
             # Get one face thumbnail for each person
             face = db.query(models.Face).filter(
                 models.Face.person_id == person.id, 
-                models.Face.thumbnail_path is not None
+                models.Face.thumbnail_path != None
             ).first()
             if face:
                 person.thumbnail_path = face.thumbnail_path
@@ -36,7 +37,7 @@ def create_person(person: schemas.PersonCreate, db: Session = Depends(get_db)):
 
 @router.get("/unnamed-faces", response_model=List[schemas.FaceResponse])
 def get_unnamed_faces(db: Session = Depends(get_db)):
-    return db.query(models.Face).filter(models.Face.person_id is None).limit(50).all()
+    return db.query(models.Face).filter(models.Face.person_id == None).limit(50).all()
 
 @router.post("/faces", response_model=List[schemas.FaceResponse])
 def get_faces(face_ids: List[int], db: Session = Depends(get_db)):
@@ -51,25 +52,21 @@ def get_unnamed_clusters(db: Session = Depends(get_db), limit: int = 1000):
     threshold = float(threshold_setting.value) if threshold_setting else 0.15
     min_faces = int(min_faces_setting.value) if min_faces_setting else 1
 
-    # 1. Fetch unnamed faces with embeddings, limited to avoid O(N^2) explosion
-    # In a real app, we'd use a vector index or a proper clustering algorithm like DBSCAN
-    print(f"DEBUG: threshold={threshold}, min_faces={min_faces}")
-    # Try getting ALL faces first to see if anything is there
-    all_faces_count = db.query(models.Face).count()
-    print(f"DEBUG: total faces in DB={all_faces_count}")
-    
+    logging.info(f"DEBUG: Starting clustering with threshold={threshold}, min_faces={min_faces}")
+
+    # 1. Fetch unnamed faces with embeddings
     unnamed_faces = db.query(models.Face).filter(
-        models.Face.person_id is None,
-        models.Face.embedding is not None
+        models.Face.person_id == None,
+        models.Face.embedding != None
     ).limit(limit).all()
     
     # 2. Also fetch faces WITHOUT embeddings (failed processing)
     failed_faces = db.query(models.Face).filter(
-        models.Face.person_id is None,
-        models.Face.embedding is None
+        models.Face.person_id == None,
+        models.Face.embedding == None
     ).limit(100).all()
 
-    logging.info(f"Clustering up to {len(unnamed_faces)} unnamed faces (plus {len(failed_faces)} failed)")
+    logging.info(f"DEBUG: Found {len(unnamed_faces)} unnamed faces and {len(failed_faces)} failed faces")
 
     clusters = []
     visited_ids = set()
@@ -83,39 +80,50 @@ def get_unnamed_clusters(db: Session = Depends(get_db), limit: int = 1000):
         })
 
     # 3. Optimized in-memory clustering
-    # Pre-calculate norms for cosine distance if needed, but InsightFace usually returns normalized vectors.
-    # To be safe and avoid numpy dependency, we'll use a simple dot product.
-    
-    face_list = list(unnamed_faces)
-    for i, face in enumerate(face_list):
-        if face.id in visited_ids:
+    face_list = []
+    for face in unnamed_faces:
+        emb = face.embedding
+        if isinstance(emb, str):
+            try:
+                emb = json.loads(emb)
+            except:
+                continue
+        
+        if emb and len(emb) == 512:
+            face_list.append({
+                "obj": face,
+                "emb": emb
+            })
+
+    logging.info(f"DEBUG: Processing {len(face_list)} faces for clustering")
+
+    for i, item_a in enumerate(face_list):
+        face_a = item_a["obj"]
+        if face_a.id in visited_ids:
             continue
         
-        cluster_face_ids = [face.id]
-        visited_ids.add(face.id)
+        cluster_face_ids = [face_a.id]
+        visited_ids.add(face_a.id)
+        emb_a = item_a["emb"]
         
-        # Current face embedding
-        emb_a = face.embedding
-        
-        # Compare with remaining faces
         for j in range(i + 1, len(face_list)):
-            other = face_list[j]
-            if other.id in visited_ids:
+            item_b = face_list[j]
+            face_b = item_b["obj"]
+            if face_b.id in visited_ids:
                 continue
                 
-            emb_b = other.embedding
+            emb_b = item_b["emb"]
             
-            # Calculate cosine distance: 1 - (dot_product / (norm_a * norm_b))
-            # Assuming normalized vectors (common for InsightFace), it's just 1 - dot_product
+            # Pure Python Cosine Distance (assuming normalized vectors)
             dot_product = sum(a * b for a, b in zip(emb_a, emb_b))
             distance = 1.0 - dot_product
             
             if distance < threshold:
-                cluster_face_ids.append(other.id)
-                visited_ids.add(other.id)
+                cluster_face_ids.append(face_b.id)
+                visited_ids.add(face_b.id)
 
         clusters.append({
-            "representative_face": face,
+            "representative_face": face_a,
             "face_ids": cluster_face_ids,
             "count": len(cluster_face_ids)
         })
@@ -124,9 +132,8 @@ def get_unnamed_clusters(db: Session = Depends(get_db), limit: int = 1000):
     if min_faces > 1:
         clusters = [c for c in clusters if c["count"] >= min_faces]
 
-    # Sort clusters by count (largest groups first)
     clusters.sort(key=lambda x: x["count"], reverse=True)
-    print(f"DEBUG: Formed {len(clusters)} clusters in-memory from {len(unnamed_faces)} faces")
+    logging.info(f"DEBUG: Formed {len(clusters)} clusters")
     
     return clusters
 
