@@ -1,4 +1,4 @@
-﻿from .telemetry import setup_telemetry
+from .telemetry import setup_telemetry
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
@@ -19,7 +19,6 @@ async def lifespan(app: FastAPI):
         init_db()
 
         # Create tables (for development, migrations should handle production)
-        Base.metadata.create_all(bind=engine)
 
         # Add default records and Admin bootstrap
         db = SessionLocal()
