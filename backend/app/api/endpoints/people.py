@@ -19,7 +19,7 @@ def get_people(db: Session = Depends(get_db)):
             # Get one face thumbnail for each person
             face = db.query(models.Face).filter(
                 models.Face.person_id == person.id, 
-                models.Face.thumbnail_path != None
+                models.Face.thumbnail_path is not None
             ).first()
             if face:
                 person.thumbnail_path = face.thumbnail_path
@@ -37,7 +37,7 @@ def create_person(person: schemas.PersonCreate, db: Session = Depends(get_db)):
 
 @router.get("/unnamed-faces", response_model=List[schemas.FaceResponse])
 def get_unnamed_faces(db: Session = Depends(get_db)):
-    return db.query(models.Face).filter(models.Face.person_id == None).limit(50).all()
+    return db.query(models.Face).filter(models.Face.person_id is None).limit(50).all()
 
 @router.post("/faces", response_model=List[schemas.FaceResponse])
 def get_faces(face_ids: List[int], db: Session = Depends(get_db)):
@@ -56,14 +56,14 @@ def get_unnamed_clusters(db: Session = Depends(get_db), limit: int = 1000):
 
     # 1. Fetch unnamed faces with embeddings
     unnamed_faces = db.query(models.Face).filter(
-        models.Face.person_id == None,
-        models.Face.embedding != None
+        models.Face.person_id is None,
+        models.Face.embedding is not None
     ).limit(limit).all()
     
     # 2. Also fetch faces WITHOUT embeddings (failed processing)
     failed_faces = db.query(models.Face).filter(
-        models.Face.person_id == None,
-        models.Face.embedding == None
+        models.Face.person_id is None,
+        models.Face.embedding is None
     ).limit(100).all()
 
     logging.info(f"DEBUG: Found {len(unnamed_faces)} unnamed faces and {len(failed_faces)} failed faces")
@@ -86,7 +86,7 @@ def get_unnamed_clusters(db: Session = Depends(get_db), limit: int = 1000):
         if isinstance(emb, str):
             try:
                 emb = json.loads(emb)
-            except:
+            except Exception:
                 continue
         
         if emb and len(emb) == 512:
