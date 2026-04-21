@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'leaflet/dist/leaflet.css';
@@ -153,7 +153,7 @@ export const MapView: React.FC<MapViewProps> = ({
                           {photo.timestamp ? new Date(photo.timestamp).toLocaleDateString(undefined, { dateStyle: 'long' }) : 'Unknown date'}
                         </div>
                         <div className="mt-3 pt-3 border-t border-slate-800 flex items-center justify-between">
-                          <span className="text-[9px] text-slate-600 font-mono tracking-tighter">{lat.toFixed(6)}, {lng.toFixed(6)}</span>
+                          <span className="text-[9px] text-slate-600 font-mono tracking-tighter">{(lat || 0).toFixed(6)}, {(lng || 0).toFixed(6)}</span>
                           <button 
                             onClick={() => handleMarkerClick(photo)}
                             className="text-[10px] font-bold text-blue-500 hover:text-blue-400 uppercase tracking-wider transition-colors"

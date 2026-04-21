@@ -33,10 +33,10 @@ def get_geolocated_photos(db: Session = Depends(get_db), current_user: models.Us
     """Fetch ALL photos that have either GPS data or manual location override."""
     return db.query(models.Photo).filter(
         or_(
-            models.Photo.gps_lat is not None,
-            models.Photo.gps_long is not None,
-            models.Photo.manual_lat_override is not None,
-            models.Photo.manual_long_override is not None
+            models.Photo.gps_lat != None, # noqa: E711
+            models.Photo.gps_long != None, # noqa: E711
+            models.Photo.manual_lat_override != None, # noqa: E711
+            models.Photo.manual_long_override != None # noqa: E711
         )
     ).all()
 
