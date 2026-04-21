@@ -1,9 +1,22 @@
+<p align="center">
+  <img src="insitu-photos_logo.png" width="200" alt="Insitu-Photos Logo">
+</p>
+
 # Insitu-Photos 📸
 
 [![CI](https://github.com/esapozhnikov/insitu-photos/actions/workflows/ci.yml/badge.svg)](https://github.com/esapozhnikov/insitu-photos/actions/workflows/ci.yml)
 [![Release](https://github.com/esapozhnikov/insitu-photos/actions/workflows/release.yml/badge.svg)](https://github.com/esapozhnikov/insitu-photos/actions/workflows/release.yml)
 
-A self-hosted, high-performance photo management application optimized for Unraid servers. **Insitu-Photos** indexes your memories exactly where they live, without ever moving, modifying, or messing with your original files.
+**Self-hosted, high-performance photo management optimized for Unraid.**
+*Read-only indexing that never touches, moves, or modifies your original files.*
+
+## 📖 Table of Contents
+* [✨ Features](#-features)
+* [📸 Showcase](#-showcase)
+* [🚀 Quick Start](#-quick-start)
+* [🏔️ Unraid Setup](#-unraid-setup)
+* [🛠️ Tech Stack](#-tech-stack)
+* [⚖️ License](#-license)
 
 ## ✨ Features
 
