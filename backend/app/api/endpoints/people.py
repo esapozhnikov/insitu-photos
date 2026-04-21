@@ -53,6 +53,11 @@ def get_unnamed_clusters(db: Session = Depends(get_db), limit: int = 1000):
 
     # 1. Fetch unnamed faces with embeddings, limited to avoid O(N^2) explosion
     # In a real app, we'd use a vector index or a proper clustering algorithm like DBSCAN
+    print(f"DEBUG: threshold={threshold}, min_faces={min_faces}")
+    # Try getting ALL faces first to see if anything is there
+    all_faces_count = db.query(models.Face).count()
+    print(f"DEBUG: total faces in DB={all_faces_count}")
+    
     unnamed_faces = db.query(models.Face).filter(
         models.Face.person_id is None,
         models.Face.embedding is not None
@@ -121,7 +126,7 @@ def get_unnamed_clusters(db: Session = Depends(get_db), limit: int = 1000):
 
     # Sort clusters by count (largest groups first)
     clusters.sort(key=lambda x: x["count"], reverse=True)
-    print(f"Formed {len(clusters)} clusters in-memory")
+    print(f"DEBUG: Formed {len(clusters)} clusters in-memory from {len(unnamed_faces)} faces")
     
     return clusters
 
