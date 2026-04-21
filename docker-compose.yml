@@ -1,5 +1,6 @@
 services:
   db:
+    container_name: insitu-photos-db
     image: ankane/pgvector:latest
     command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track=all", "-c", "track_activity_query_size=4096"]
     environment:
@@ -15,11 +16,13 @@ services:
       - ./postgres-init:/docker-entrypoint-initdb.d:ro
 
   redis:
+    container_name: insitu-photos-redis
     image: redis:7-alpine
     ports:
       - "6379:6379"
 
   api:
+    container_name: insitu-photos-api
     build: ./backend
     ports:
       - "8000:8000"
@@ -43,6 +46,7 @@ services:
       - ./migrations:/app/alembic/versions
 
   worker:
+    container_name: insitu-photos-worker
     build: ./backend
     command: ./start-worker.sh
     environment:
@@ -65,6 +69,7 @@ services:
       - ./migrations:/app/alembic/versions
 
   ml-service:
+    container_name: insitu-photos-ml
     # CPU Image:
     image: ghcr.io/immich-app/immich-machine-learning:v2.7.5
     # For GPU (NVIDIA), uncomment below:
@@ -83,6 +88,7 @@ services:
 
 
   frontend:
+    container_name: insitu-photos-ui
     build: 
       context: ./frontend
       args:
