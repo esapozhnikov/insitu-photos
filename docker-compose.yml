@@ -12,8 +12,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./postgres-init:/docker-entrypoint-initdb.d
+      - $HOST_APPDATA_PATH/db:/var/lib/postgresql/data
+      - $HOST_APPDATA_PATH/postgres-init:/docker-entrypoint-initdb.d
 
   redis:
     container_name: insitu-photos-redis
@@ -41,8 +41,8 @@ services:
       - db
       - redis
     volumes:
-      - /mnt/user/photos:/photos:ro
-      - ./cache:/cache
+      - $HOST_PHOTO_PATH:/photos:ro
+      - $HOST_APPDATA_PATH/cache:/cache
       - ./migrations:/app/alembic/versions
 
   worker:
@@ -64,8 +64,8 @@ services:
       - db
       - redis
     volumes:
-      - /mnt/user/photos:/photos:ro
-      - ./cache:/cache
+      - $HOST_PHOTO_PATH:/photos:ro
+      - $HOST_APPDATA_PATH/cache:/cache
       - ./migrations:/app/alembic/versions
 
   ml-service:

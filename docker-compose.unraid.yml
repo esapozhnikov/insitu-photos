@@ -13,8 +13,8 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - /mnt/user/appdata/insitu-photos/db:/var/lib/postgresql/data
-      - /mnt/user/appdata/insitu-photos/postgres-init:/docker-entrypoint-initdb.d
+      - $HOST_APPDATA_PATH/db:/var/lib/postgresql/data
+      - $HOST_APPDATA_PATH/postgres-init:/docker-entrypoint-initdb.d
     # Remove this service if using an external DB
 
   redis:
@@ -39,8 +39,8 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - /mnt/disk1:/photos:ro
-      - /mnt/user/appdata/insitu-photos/cache:/cache
+      - $HOST_PHOTO_PATH:/photos:ro
+      - $HOST_APPDATA_PATH/cache:/cache
     depends_on:
       - db
       - redis
@@ -62,8 +62,8 @@ services:
       OTEL_DEPLOYMENT_ENVIRONMENT: ${OTEL_DEPLOYMENT_ENVIRONMENT:-production}
       OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-1.0.0}
     volumes:
-      - /mnt/disk1:/photos:ro
-      - /mnt/user/appdata/insitu-photos/cache:/cache
+      - $HOST_PHOTO_PATH:/photos:ro
+      - $HOST_APPDATA_PATH/cache:/cache
     depends_on:
       - db
       - redis
