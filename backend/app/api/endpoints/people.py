@@ -86,17 +86,25 @@ def get_unnamed_clusters(db: Session = Depends(get_db), limit: int = 1000):
     face_list = []
     for face in unnamed_faces:
         emb = face.embedding
+        
+        # Handle different embedding formats (pgvector might return a special array type)
         if isinstance(emb, str):
             try:
                 emb = json.loads(emb)
             except Exception:
                 continue
         
-        if emb and (isinstance(emb, list) or hasattr(emb, "__iter__")) and len(emb) == 512:
-            face_list.append({
-                "obj": face,
-                "emb": list(emb)
-            })
+        # Convert to list safely to avoid "truth value of an array is ambiguous"
+        if emb is not None:
+            try:
+                emb_list = list(emb)
+                if len(emb_list) == 512:
+                    face_list.append({
+                        "obj": face,
+                        "emb": emb_list
+                    })
+            except Exception:
+                continue
 
     logging.info(f"DEBUG: Processing {len(face_list)} faces for clustering")
 
