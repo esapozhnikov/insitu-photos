@@ -19,7 +19,7 @@ def get_people(db: Session = Depends(get_db)):
             # Get one face thumbnail for each person
             face = db.query(models.Face).filter(
                 models.Face.person_id == person.id, 
-                models.Face.thumbnail_path is not None
+                models.Face.thumbnail_path != None # noqa: E711
             ).first()
             if face:
                 person.thumbnail_path = face.thumbnail_path
@@ -37,7 +37,7 @@ def create_person(person: schemas.PersonCreate, db: Session = Depends(get_db)):
 
 @router.get("/unnamed-faces", response_model=List[schemas.FaceResponse])
 def get_unnamed_faces(db: Session = Depends(get_db)):
-    return db.query(models.Face).filter(models.Face.person_id is None).limit(50).all()
+    return db.query(models.Face).filter(models.Face.person_id == None).limit(50).all() # noqa: E711
 
 @router.post("/faces", response_model=List[schemas.FaceResponse])
 def get_faces(face_ids: List[int], db: Session = Depends(get_db)):
@@ -52,21 +52,24 @@ def get_unnamed_clusters(db: Session = Depends(get_db), limit: int = 1000):
     threshold = float(threshold_setting.value) if threshold_setting else 0.15
     min_faces = int(min_faces_setting.value) if min_faces_setting else 1
 
-    logging.info(f"DEBUG: Starting clustering with threshold={threshold}, min_faces={min_faces}")
+    # Try getting ALL faces first to see if anything is there
+    all_faces_count = db.query(models.Face).count()
+    logging.info(f"DEBUG: Starting clustering with threshold={threshold}, min_faces={min_faces}. Total faces in DB={all_faces_count}")
 
     # 1. Fetch unnamed faces with embeddings
+    # IMPORTANT: SQLAlchemy requires == None for IS NULL
     unnamed_faces = db.query(models.Face).filter(
-        models.Face.person_id is None,
-        models.Face.embedding is not None
+        models.Face.person_id == None, # noqa: E711
+        models.Face.embedding != None # noqa: E711
     ).limit(limit).all()
     
     # 2. Also fetch faces WITHOUT embeddings (failed processing)
     failed_faces = db.query(models.Face).filter(
-        models.Face.person_id is None,
-        models.Face.embedding is None
+        models.Face.person_id == None, # noqa: E711
+        models.Face.embedding == None # noqa: E711
     ).limit(100).all()
 
-    logging.info(f"DEBUG: Found {len(unnamed_faces)} unnamed faces and {len(failed_faces)} failed faces")
+    logging.info(f"DEBUG: Found {len(unnamed_faces)} unnamed faces with embeddings and {len(failed_faces)} failed faces")
 
     clusters = []
     visited_ids = set()
@@ -89,10 +92,10 @@ def get_unnamed_clusters(db: Session = Depends(get_db), limit: int = 1000):
             except Exception:
                 continue
         
-        if emb and len(emb) == 512:
+        if emb and (isinstance(emb, list) or hasattr(emb, "__iter__")) and len(emb) == 512:
             face_list.append({
                 "obj": face,
-                "emb": emb
+                "emb": list(emb)
             })
 
     logging.info(f"DEBUG: Processing {len(face_list)} faces for clustering")
