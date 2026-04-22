@@ -71,10 +71,11 @@ Access the UI at `http://localhost:3000`.
 
 ## 🏔️ Unraid Setup
 For Unraid users, we provide a streamlined setup script:
-1. Copy `setup_unraid.sh` and `docker-compose.unraid.yml` to your server.
-2. Configure `.env` as described above.
-3. Run `bash setup_unraid.sh`.
-4. Run `docker-compose -f docker-compose.unraid.yml up -d`.
+1. Make sure you have Docker Compose Manager installed in Unraid to make setup easier
+2. Use manager to create new stack
+3. Copy `docker-compose.unraid.yml` to your server stack folder as `docker-compose.yml`.
+4. Configure `.env` as described above.
+5. Click Composer Up in Docker Compose Manager.
 
 The UI will be available at `http://<unraid-ip>:3001`.
 
