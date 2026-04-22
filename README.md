@@ -2,7 +2,7 @@
   <img src="frontend/public/logo_large.png" width="200" alt="Insitu-Photos Logo">
 </p>
 
-# Insitu-Photos 📸
+# Insitu-Photos 
 
 [![CI](https://github.com/esapozhnikov/insitu-photos/actions/workflows/ci.yml/badge.svg)](https://github.com/esapozhnikov/insitu-photos/actions/workflows/ci.yml)
 [![Release](https://github.com/esapozhnikov/insitu-photos/actions/workflows/release.yml/badge.svg)](https://github.com/esapozhnikov/insitu-photos/actions/workflows/release.yml)
