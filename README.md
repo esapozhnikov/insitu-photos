@@ -1,19 +1,54 @@
-# Insitu-Photos 📸
+<p align="center">
+  <img src="frontend/public/logo_large.png" width="200" alt="Insitu-Photos Logo">
+</p>
+
+# Insitu-Photos 
 
 [![CI](https://github.com/esapozhnikov/insitu-photos/actions/workflows/ci.yml/badge.svg)](https://github.com/esapozhnikov/insitu-photos/actions/workflows/ci.yml)
 [![Release](https://github.com/esapozhnikov/insitu-photos/actions/workflows/release.yml/badge.svg)](https://github.com/esapozhnikov/insitu-photos/actions/workflows/release.yml)
 
-A self-hosted, high-performance photo management application optimized for Unraid servers. **Insitu-Photos** indexes your memories exactly where they live, without ever moving, modifying, or messing with your original files.
+**Self-hosted, high-performance photo management for large photo collections.**
 
-## ✨ Features
+**Insitu-Photos** indexes your memories exactly where they live, without ever moving, modifying, or messing with your original files.
 
-*   **📍 In-Situ Indexing:** Read-only access to your photo library. Your folder structure is preserved and untouched.
-*   **🤖 AI-Powered Facial Recognition:** Automatically group faces using InsightFace.
-*   **🌍 Interactive Mapping:** Discover your photos on a world map with intelligent clustering.
-*   **⚡ High Performance:** Smoothly navigate libraries of 10,000+ photos with virtualized grids.
-*   **📺 TV-Friendly Slideshow:** Full-screen automated playback mode for any selection or album.
-*   **🔍 Unified Search:** Filter by person, date, folder, tags, or metadata.
-*   **📊 Stats & Telemetry:** Built-in dashboard and OpenTelemetry support for monitoring.
+## 📖 Table of Contents
+* [📸 Showcase](#-showcase)
+* [🚀 Quick Start](#-quick-start)
+* [🏔️ Unraid Setup](#-unraid-setup)
+* [🛠️ Tech Stack](#-tech-stack)
+* [⚖️ License](#-license)
+
+## 📸 Showcase
+
+### ⚡ High-Performance Timeline
+Smoothly navigate libraries of 10,000+ photos with virtualized grids. Preserve your original memories exactly where they live.
+
+![Timeline Screenshot](docs/screenshots/timeline.png)
+
+### 🤖 AI Face Recognition
+Automatically group faces using InsightFace (buffalo_l model) and manage people in your collection.
+
+![People Screenshot](docs/screenshots/people.png)
+
+### 🌍 Interactive Map
+Discover your photos on a world map with intelligent clustering and metadata-based location tracking.
+
+![Map Screenshot](docs/screenshots/map.png)
+
+### 📍 In-Situ Indexing & Folders
+Read-only access to your photo library. Your folder structure is preserved and untouched.
+
+![Folders Screenshot](docs/screenshots/folders.png)
+
+### 📊 Stats & Monitoring
+Built-in dashboard for library statistics and OpenTelemetry support for system telemetry.
+
+![Stats Screenshot](docs/screenshots/stats.png)
+
+### ⚙️ Admin & Settings
+Easy configuration for ML thresholds, server paths, and user management.
+
+![Settings Screenshot](docs/screenshots/settings.png)
 
 ## 🚀 Quick Start
 
@@ -36,10 +71,11 @@ Access the UI at `http://localhost:3000`.
 
 ## 🏔️ Unraid Setup
 For Unraid users, we provide a streamlined setup script:
-1. Copy `setup_unraid.sh` and `docker-compose.unraid.yml` to your server.
-2. Configure `.env` as described above.
-3. Run `bash setup_unraid.sh`.
-4. Run `docker-compose -f docker-compose.unraid.yml up -d`.
+1. Make sure you have Docker Compose Manager installed in Unraid to make setup easier
+2. Use manager to create new stack
+3. Copy `docker-compose.unraid.yml` to your server stack folder as `docker-compose.yml`.
+4. Configure `.env` as described above.
+5. Click Composer Up in Docker Compose Manager.
 
 The UI will be available at `http://<unraid-ip>:3001`.
 

@@ -2,7 +2,6 @@ services:
   db:
     container_name: insitu-photos-db
     image: ankane/pgvector:latest
-    container_name: db
     command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track=all", "-c", "track_activity_query_size=4096"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-photoalbum}
