@@ -52,9 +52,9 @@ class Photo(Base):
     iso = Column(Integer, nullable=True)
     thumbnail_small = Column(String, nullable=True)
     thumbnail_large = Column(String, nullable=True)
-    
-    albums = relationship("Album", secondary=album_photos, back_populates="photos")
-    faces = relationship("Face", back_populates="photo")
+    is_face_scanned = Column(Boolean, default=False, index=True)
+
+    albums = relationship("Album", secondary=album_photos, back_populates="photos")    faces = relationship("Face", back_populates="photo")
     tags = relationship("Tag", secondary=photo_tags, back_populates="photos")
 
 class Album(Base):
