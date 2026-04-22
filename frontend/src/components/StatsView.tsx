@@ -46,19 +46,36 @@ export const StatsView = () => {
       </div>
       
       {/* AI Progress Section */}
-      <div className="mt-12 bg-slate-900/50 border border-slate-800 rounded-2xl p-8">
-        <h3 className="text-xl font-semibold mb-4">AI Processing Status</h3>
-        <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
-          <div 
-            className="bg-blue-600 h-full transition-all duration-1000"
-            style={{ width: `${stats.total_faces > 0 ? (stats.processed_faces / stats.total_faces) * 100 : 0}%` }}
-          ></div>
+      <div className="mt-12 bg-slate-900/50 border border-slate-800 rounded-2xl p-8 space-y-8">
+        <div>
+          <h3 className="text-xl font-semibold mb-4">Library Scan Progress (Face Detection)</h3>
+          <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
+            <div
+              className="bg-blue-600 h-full transition-all duration-1000"
+              style={{ width: `${stats.total_photos > 0 ? (stats.scanned_photos / stats.total_photos) * 100 : 0}%` }}
+            ></div>
+          </div>
+          <div className="flex justify-between mt-2 text-sm text-slate-400 font-medium">
+            <span>{stats.scanned_photos} photos scanned</span>
+            <span>{stats.total_photos} total photos</span>
+          </div>
         </div>
-        <div className="flex justify-between mt-2 text-sm text-slate-400 font-medium">
-          <span>{stats.processed_faces} faces processed</span>
-          <span>{stats.total_faces} total faces</span>
+
+        <div>
+          <h3 className="text-xl font-semibold mb-4">Identification Coverage</h3>
+          <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">
+            <div
+              className="bg-emerald-600 h-full transition-all duration-1000"
+              style={{ width: `${stats.total_faces > 0 ? (stats.identified_faces / stats.total_faces) * 100 : 0}%` }}
+            ></div>
+          </div>
+          <div className="flex justify-between mt-2 text-sm text-slate-400 font-medium">
+            <span>{stats.identified_faces} faces identified</span>
+            <span>{stats.total_faces} total faces detected</span>
+          </div>
         </div>
       </div>
+
     </div>
   );
 };

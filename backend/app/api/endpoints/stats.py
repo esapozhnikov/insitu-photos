@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
+import sqlalchemy as sa
 from ...database import get_db
 from ... import models, schemas, auth
 from ... import crud
@@ -19,11 +20,12 @@ def get_stats(db: Session = Depends(get_db)):
 
     return {
         "total_photos": db.query(models.Photo).count(),
+        "scanned_photos": db.query(models.Photo).filter(models.Photo.is_face_scanned == sa.true()).count(),
         "total_folders": db.query(models.Folder).count(),
         "total_albums": db.query(models.Album).count(),
         "total_faces": db.query(models.Face).count(),
         "total_people": db.query(models.Person).count(),
-        "processed_faces": db.query(models.Face).filter(models.Face.person_id is not None).count(),
+        "identified_faces": db.query(models.Face).filter(models.Face.person_id.isnot(None)).count(),
         "photos_by_year": photos_by_year
     }
 
@@ -39,13 +41,13 @@ def get_system_status(db: Session = Depends(get_db)):
     
     # Add detailed counts for better diagnostics
     db.query(models.Face).filter(
-        models.Face.person_id is None,
-        models.Face.embedding is not None
+        models.Face.person_id.is_(None),
+        models.Face.embedding.isnot(None)
     ).count()
     
     unassigned_without_embeddings = db.query(models.Face).filter(
-        models.Face.person_id is None,
-        models.Face.embedding is None
+        models.Face.person_id.is_(None),
+        models.Face.embedding.is_(None)
     ).count()
     
     return {
