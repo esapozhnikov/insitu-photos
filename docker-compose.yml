@@ -23,14 +23,14 @@ services:
 
   api:
     container_name: insitu-photos-api
-    build: ./backend
+    image: ghcr.io/esapozhnikov/insitu-photos-backend:latest
     ports:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-photos}:${POSTGRES_PASSWORD:-photos_pass}@db:5432/${POSTGRES_DB:-insitu_photos}
       REDIS_URL: redis://redis:6379/0
-      PHOTO_ROOT: /photos
-      CACHE_ROOT: /cache
+      PHOTO_ROOT: ${PHOTO_ROOT:-/photos}
+      CACHE_ROOT: ${CACHE_ROOT:-/cache}
       SECRET_KEY: ${SECRET_KEY:-temporary_secret_key_change_me}
       ADMIN_USER: ${ADMIN_USER:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin_password}
@@ -46,13 +46,13 @@ services:
 
   worker:
     container_name: insitu-photos-worker
-    build: ./backend
+    image: ghcr.io/esapozhnikov/insitu-photos-backend:latest
     command: ./start-worker.sh
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-photos}:${POSTGRES_PASSWORD:-photos_pass}@db:5432/${POSTGRES_DB:-insitu_photos}
       REDIS_URL: redis://redis:6379/0
-      PHOTO_ROOT: /photos
-      CACHE_ROOT: /cache
+      PHOTO_ROOT: ${PHOTO_ROOT:-/photos}
+      CACHE_ROOT: ${CACHE_ROOT:-/cache}
       SECRET_KEY: ${SECRET_KEY:-temporary_secret_key_change_me}
       ADMIN_USER: ${ADMIN_USER:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin_password}
@@ -87,10 +87,7 @@ services:
 
   frontend:
     container_name: insitu-photos-ui
-    build: 
-      context: ./frontend
-      args:
-        VITE_OTEL_EXPORTER_OTLP_ENDPOINT: ${VITE_OTEL_EXPORTER_OTLP_ENDPOINT:-none}
+    image: ghcr.io/esapozhnikov/insitu-photos-frontend:latest
     ports:
       - "3000:80"
     depends_on:
