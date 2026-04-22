@@ -109,11 +109,12 @@ class FaceBulkAssign(BaseModel):
 
 class LibraryStats(BaseModel):
     total_photos: int
+    scanned_photos: int
     total_folders: int
     total_albums: int
     total_faces: int
     total_people: int
-    processed_faces: int
+    identified_faces: int
     photos_by_year: dict[str, int]
 
 class SystemStatus(BaseModel):

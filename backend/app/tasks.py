@@ -119,6 +119,10 @@ def process_faces_task(photo_id: int):
                     crud.update_face_thumbnail(db, db_face.id, thumb_path)
                 except Exception as e:
                     logger.error(f"Error generating face thumbnail for {db_face.id}: {e}")
+            
+            # Mark photo as face scanned
+            db_photo.is_face_scanned = True
+            db.commit()
         except Exception as e:
             logger.error(f"Error in process_faces_task for photo {photo_id}: {e}")
             span.record_exception(e)
@@ -188,6 +192,10 @@ def full_face_rescan_task():
             # Mark as running
             crud.update_setting(db, "ml_full_rescan_running", "true")
             crud.update_setting(db, "ml_full_rescan_progress", "Clearing database...")
+
+            # Reset scanning status for all photos
+            db.query(models.Photo).update({models.Photo.is_face_scanned: False})
+            db.commit()
 
             # 1. Clear database face/person data
             crud.reset_faces(db)
