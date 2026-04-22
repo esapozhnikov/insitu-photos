@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="insitu-photos_logo.png" width="200" alt="Insitu-Photos Logo">
+  <img src="frontend/public/logo_large.png" width="200" alt="Insitu-Photos Logo">
 </p>
 
 # Insitu-Photos 📸
@@ -7,8 +7,9 @@
 [![CI](https://github.com/esapozhnikov/insitu-photos/actions/workflows/ci.yml/badge.svg)](https://github.com/esapozhnikov/insitu-photos/actions/workflows/ci.yml)
 [![Release](https://github.com/esapozhnikov/insitu-photos/actions/workflows/release.yml/badge.svg)](https://github.com/esapozhnikov/insitu-photos/actions/workflows/release.yml)
 
-**Self-hosted, high-performance photo management optimized for Unraid.**
-*Read-only indexing that never touches, moves, or modifies your original files.*
+**Self-hosted, high-performance photo management for large photo collections.**
+
+**Insitu-Photos** indexes your memories exactly where they live, without ever moving, modifying, or messing with your original files.
 
 ## 📖 Table of Contents
 * [📸 Showcase](#-showcase)
