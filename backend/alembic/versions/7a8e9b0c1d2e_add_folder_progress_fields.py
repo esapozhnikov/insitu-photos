@@ -19,10 +19,23 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('folders', sa.Column('total_files', sa.Integer(), nullable=False, server_default='0'))
-    op.add_column('folders', sa.Column('processed_files', sa.Integer(), nullable=False, server_default='0'))
+    # Use inspector to check for column existence to make migration idempotent
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [c['name'] for c in inspector.get_columns('folders')]
+
+    if 'total_files' not in columns:
+        op.add_column('folders', sa.Column('total_files', sa.Integer(), nullable=False, server_default='0'))
+    if 'processed_files' not in columns:
+        op.add_column('folders', sa.Column('processed_files', sa.Integer(), nullable=False, server_default='0'))
 
 
 def downgrade() -> None:
-    op.drop_column('folders', 'processed_files')
-    op.drop_column('folders', 'total_files')
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [c['name'] for c in inspector.get_columns('folders')]
+
+    if 'processed_files' in columns:
+        op.drop_column('folders', 'processed_files')
+    if 'total_files' in columns:
+        op.drop_column('folders', 'total_files')
