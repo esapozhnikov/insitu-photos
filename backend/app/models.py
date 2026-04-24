@@ -78,6 +78,8 @@ class Folder(Base):
     last_scanned_at = Column(DateTime, nullable=True)
     status = Column(String, default="idle")
     scan_error = Column(String, nullable=True)
+    total_files = Column(Integer, default=0)
+    processed_files = Column(Integer, default=0)
 
 class Person(Base):
     __tablename__ = "people"

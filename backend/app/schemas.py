@@ -14,6 +14,8 @@ class FolderResponse(BaseModel):
     last_scanned_at: Optional[datetime]
     status: str
     scan_error: Optional[str] = None
+    total_files: int
+    processed_files: int
 
 class TagResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -116,6 +118,7 @@ class LibraryStats(BaseModel):
     total_people: int
     identified_faces: int
     photos_by_year: dict[str, int]
+    folders: List[FolderResponse] = []
 
 class SystemStatus(BaseModel):
     is_scanning: bool

@@ -267,6 +267,16 @@ def index_folder_task(folder_path: str):
             span.set_attribute("photo.count", len(photos))
             logger.info(f"Found {len(photos)} photos in {folder_path}")
 
+            if folder_id:
+                try:
+                    folder = db.query(models.Folder).filter(models.Folder.id == folder_id).first()
+                    if folder:
+                        folder.total_files = len(photos)
+                        folder.processed_files = 0
+                        db.commit()
+                except Exception as e:
+                    logger.error(f"Error updating folder total_files: {e}")
+
             for i, path in enumerate(photos):
                 try:
                     db_photo = crud.get_photo_by_path(db, path)
@@ -293,6 +303,10 @@ def index_folder_task(folder_path: str):
 
                     # Periodically commit to show progress and keep memory low
                     if (i + 1) % 100 == 0:
+                        if folder_id:
+                            folder = db.query(models.Folder).filter(models.Folder.id == folder_id).first()
+                            if folder:
+                                folder.processed_files = i + 1
                         db.commit()
                         logger.info(f"Processed {i + 1}/{len(photos)} photos...")
                 except Exception as e:
