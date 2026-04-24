@@ -184,7 +184,7 @@ def re_run_recognition_task():
             crud.update_setting(db, "ml_re_recognition_running", "false")
             db.close()
 
-@celery_app.task
+@celery_app.task(time_limit=3600*24, soft_time_limit=3600*23) # 24 hours
 def full_face_rescan_task():
     with tracer.start_as_current_span("tasks.full_face_rescan") as span:
         db = SessionLocal()
@@ -237,7 +237,7 @@ def full_face_rescan_task():
             crud.update_setting(db, "ml_full_rescan_running", "false")
             db.close()
 
-@celery_app.task
+@celery_app.task(time_limit=3600*24, soft_time_limit=3600*23) # 24 hours
 def index_folder_task(folder_path: str):
     with tracer.start_as_current_span("tasks.index_folder") as span:
         span.set_attribute("folder.path", folder_path)
