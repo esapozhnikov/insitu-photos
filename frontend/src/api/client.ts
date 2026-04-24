@@ -81,6 +81,7 @@ export const api = {
   // Admin / Settings
   reRunRecognition: () => client.post('/admin/re-run-recognition').then(res => res.data),
   fullFaceRescan: () => client.post('/admin/full-face-rescan').then(res => res.data),
+  scanMissingFaces: () => client.post('/admin/scan-missing-faces').then(res => res.data),
   resetBackgroundTasks: () => client.post('/admin/reset-background-tasks').then(res => res.data),
   resetLibrary: () => client.post('/admin/reset').then(res => res.data),
   browseDirectory: (path?: string) => client.get('/admin/browse', { params: { path } }).then(res => res.data),

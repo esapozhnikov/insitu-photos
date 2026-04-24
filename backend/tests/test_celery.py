@@ -41,5 +41,11 @@ def test_auto_reset_on_worker_startup():
 
 def test_celery_task_timeouts_configured():
     from app.worker import celery_app
-    assert celery_app.conf.task_soft_time_limit == 300
-    assert celery_app.conf.task_time_limit == 600
+    # Global defaults from worker.py
+    assert celery_app.conf.task_soft_time_limit == 3600
+    assert celery_app.conf.task_time_limit == 3900
+
+def test_scan_missing_faces_task_exists():
+    from app.tasks import scan_missing_faces_task
+    assert scan_missing_faces_task is not None
+    assert hasattr(scan_missing_faces_task, 'delay')

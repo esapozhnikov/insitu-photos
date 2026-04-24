@@ -288,6 +288,26 @@ const AdminView: React.FC = () => {
                     <div className="text-[10px] text-slate-500">Scan all photos from scratch for faces</div>
                   </div>
                 </button>
+
+                <button 
+                  onClick={async () => {
+                    try {
+                      await api.scanMissingFaces();
+                      showStatus('Missing faces scan task queued', 'info');
+                    } catch (e) {
+                      showStatus('Failed to queue task', 'error');
+                    }
+                  }}
+                  className="flex items-center gap-3 p-4 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 rounded-xl transition-all group"
+                >
+                  <div className="bg-emerald-500/10 p-2 rounded-lg text-emerald-400 group-hover:scale-110 transition-transform">
+                    <Search className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-sm font-semibold text-white">Scan Missing Faces</div>
+                    <div className="text-[10px] text-slate-500">Only scan photos that were skipped or failed</div>
+                  </div>
+                </button>
               </div>
             </div>
           </div>

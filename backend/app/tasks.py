@@ -237,6 +237,33 @@ def full_face_rescan_task():
             crud.update_setting(db, "ml_full_rescan_running", "false")
             db.close()
 
+@celery_app.task
+def scan_missing_faces_task():
+    with tracer.start_as_current_span("tasks.scan_missing_faces") as span:
+        db = SessionLocal()
+        try:
+            crud.update_setting(db, "ml_full_rescan_running", "true")
+            crud.update_setting(db, "ml_full_rescan_progress", "Searching for missing scans...")
+
+            photos = db.query(models.Photo).filter(models.Photo.is_face_scanned == False).all() # noqa: E712
+            total = len(photos)
+            span.set_attribute("photos.missing_count", total)
+            logger.info(f"Queuing face processing for {total} unscanned photos...")
+            
+            for i, photo in enumerate(photos):
+                process_faces_task.delay(photo.id)
+                if (i + 1) % 100 == 0 or (i + 1) == total:
+                    crud.update_setting(db, "ml_full_rescan_progress", f"Queuing missing: {i + 1}/{total} photos...")
+
+            crud.update_setting(db, "ml_full_rescan_progress", f"Processing {total} missing scans in background...")
+            logger.info(f"Scan for missing faces queuing complete for {total} photos.")
+        except Exception as e:
+            logger.error(f"Error during scan_missing_faces task: {e}")
+            span.record_exception(e)
+        finally:
+            crud.update_setting(db, "ml_full_rescan_running", "false")
+            db.close()
+
 @celery_app.task(time_limit=3600*24, soft_time_limit=3600*23) # 24 hours
 def index_folder_task(folder_path: str):
     with tracer.start_as_current_span("tasks.index_folder") as span:
