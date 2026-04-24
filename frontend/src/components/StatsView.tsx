@@ -47,6 +47,44 @@ export const StatsView = () => {
       
       {/* AI Progress Section */}
       <div className="mt-12 bg-slate-900/50 border border-slate-800 rounded-2xl p-8 space-y-8">
+        {stats.folders && stats.folders.length > 0 && (
+          <div>
+            <h3 className="text-xl font-semibold mb-6 flex items-center gap-2">
+              <Folder size={20} className="text-amber-500" /> Folder Scan Progress
+            </h3>
+            <div className="space-y-6">
+              {stats.folders.map((folder: any) => {
+                const progress = folder.total_files > 0 
+                  ? Math.min(100, Math.round((folder.processed_files / folder.total_files) * 100)) 
+                  : (folder.status === 'idle' && folder.last_scanned_at ? 100 : 0);
+                
+                return (
+                  <div key={folder.id} className="space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-300 font-medium truncate max-w-md">{folder.path}</span>
+                      <span className="text-slate-400">
+                        {folder.status === 'scanning' ? (
+                          <span className="text-amber-500 animate-pulse flex items-center gap-2">
+                            Scanning... {folder.processed_files} / {folder.total_files}
+                          </span>
+                        ) : (
+                          <span>Completed</span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-1000 ${folder.status === 'scanning' ? 'bg-amber-500' : 'bg-slate-600'}`}
+                        style={{ width: `${progress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div>
           <h3 className="text-xl font-semibold mb-4">Library Scan Progress (Face Detection)</h3>
           <div className="w-full bg-slate-800 rounded-full h-4 overflow-hidden">

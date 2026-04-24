@@ -26,7 +26,8 @@ def get_stats(db: Session = Depends(get_db)):
         "total_faces": db.query(models.Face).count(),
         "total_people": db.query(models.Person).count(),
         "identified_faces": db.query(models.Face).filter(models.Face.person_id.isnot(None)).count(),
-        "photos_by_year": photos_by_year
+        "photos_by_year": photos_by_year,
+        "folders": db.query(models.Folder).all()
     }
 
 @router.get("/status", response_model=schemas.SystemStatus)
