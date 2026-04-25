@@ -1,4 +1,4 @@
-from .auth import get_password_hash
+﻿from .auth import get_password_hash
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import List
@@ -28,26 +28,36 @@ def delete_folder(db: Session, folder_id: int):
     folder = db.query(models.Folder).filter(models.Folder.id == folder_id).first()
     if not folder:
         return False
+
+    # Precise path matching: either the folder itself or a sub-path
+    base_path = folder.path.rstrip('/')
+    sub_path_pattern = base_path + '/%'
     
-    # Get all photo IDs that are about to be deleted
-    path_pattern = folder.path.rstrip('/') + '%'
-    photo_ids = [p.id for p in db.query(models.Photo).filter(models.Photo.physical_path.like(path_pattern)).all()]
-    
+    photo_ids = [p.id for p in db.query(models.Photo).filter(
+        or_(
+            models.Photo.physical_path == base_path,
+            models.Photo.physical_path.like(sub_path_pattern)
+        )
+    ).all()]
+
     if photo_ids:
         # Nullify references in related tables
         db.query(models.Album).filter(models.Album.cover_photo_id.in_(photo_ids)).update({models.Album.cover_photo_id: None}, synchronize_session=False)
         db.query(models.Person).filter(models.Person.thumbnail_photo_id.in_(photo_ids)).update({models.Person.thumbnail_photo_id: None}, synchronize_session=False)
-        
+
         # Delete from many-to-many join tables
         db.execute(models.album_photos.delete().where(models.album_photos.c.photo_id.in_(photo_ids)))
         db.execute(models.photo_tags.delete().where(models.photo_tags.c.photo_id.in_(photo_ids)))
-        
+
         # Delete dependent records
         db.query(models.Face).filter(models.Face.photo_id.in_(photo_ids)).delete(synchronize_session=False)
-        
+
         # Finally delete the photos
         db.query(models.Photo).filter(models.Photo.id.in_(photo_ids)).delete(synchronize_session=False)
-    
+
+    # Nullify linked_folder_id in Albums
+    db.query(models.Album).filter(models.Album.linked_folder_id == folder_id).update({models.Album.linked_folder_id: None}, synchronize_session=False)
+
     # Delete the folder record itself
     db.delete(folder)
     db.commit()
@@ -116,10 +126,10 @@ def reset_faces(db: Session):
     db.commit()
 def search_photos(db: Session, filters: schemas.PhotoSearch, skip: int = 0, limit: int = 100, options: list = None):
     query = db.query(models.Photo)
-    
+
     if options:
         query = query.options(*options)
-    
+
     if filters.start_date:
         query = query.filter(models.Photo.timestamp >= filters.start_date)
     if filters.end_date:
@@ -134,11 +144,11 @@ def search_photos(db: Session, filters: schemas.PhotoSearch, skip: int = 0, limi
     if filters.folder_path:
         # Normalize slashes and ensure trailing slash for prefix matching
         p = filters.folder_path.replace('\\', '/').rstrip('/')
-        
+
         # Create versions with and without leading slash for robustness
         p_no_slash = p.lstrip('/')
         p_with_slash = '/' + p_no_slash
-        
+
         if filters.recursive:
             # Match either version as prefix
             query = query.filter(or_(
@@ -156,11 +166,11 @@ def search_photos(db: Session, filters: schemas.PhotoSearch, skip: int = 0, limi
                 ~models.Photo.physical_path.ilike(f"{p_no_slash}/%/%"),
                 ~models.Photo.physical_path.ilike(f"{p_with_slash}/%/%")
             ))
-    
+
     # Prioritize person_id.
     if filters.person_id:
         query = query.join(models.Face).filter(models.Face.person_id == filters.person_id)
-    
+
     if filters.face_ids:
         query = query.join(models.Face).filter(models.Face.id.in_(filters.face_ids))
 
@@ -168,16 +178,16 @@ def search_photos(db: Session, filters: schemas.PhotoSearch, skip: int = 0, limi
         query = query.join(models.Photo.albums).filter(models.Album.id == filters.album_id)
     if filters.tag_name:
         query = query.join(models.Photo.tags).filter(models.Tag.name == filters.tag_name)
-    
+
     if filters.query:
-        # If person_id is set, we skip the text query to avoid the "0 photos" bug 
+        # If person_id is set, we skip the text query to avoid the "0 photos" bug
         # where the person's name isn't in the metadata.
         if not filters.person_id:
             query = query.filter(or_(
                 models.Photo.description.ilike(f"%{filters.query}%"),
                 models.Photo.physical_path.ilike(f"%{filters.query}%")
             ))
-        
+
     return query.distinct().order_by(models.Photo.timestamp.desc()).offset(skip).limit(limit).all()
 
 def create_album(db: Session, album: schemas.AlbumCreate):
@@ -200,12 +210,12 @@ def add_photos_to_album(db: Session, album_id: int, photo_ids: List[int]):
     album = db.query(models.Album).filter(models.Album.id == album_id).first()
     if not album:
         return None
-    
+
     photos = db.query(models.Photo).filter(models.Photo.id.in_(photo_ids)).all()
     for photo in photos:
         if photo not in album.photos:
             album.photos.append(photo)
-    
+
     db.commit()
     db.refresh(album)
     return album
@@ -214,14 +224,14 @@ def update_photo_meta(db: Session, photo_id: int, updates: schemas.PhotoUpdate):
     db_photo = db.query(models.Photo).filter(models.Photo.id == photo_id).first()
     if not db_photo:
         return None
-    
+
     if updates.description is not None:
         db_photo.description = updates.description
     if updates.manual_lat_override is not None:
         db_photo.manual_lat_override = updates.manual_lat_override
     if updates.manual_long_override is not None:
         db_photo.manual_long_override = updates.manual_long_override
-        
+
     if updates.tags is not None:
         # Append new tags to existing ones (if not already present)
         current_tag_names = {t.name for t in db_photo.tags}
@@ -233,7 +243,7 @@ def update_photo_meta(db: Session, photo_id: int, updates: schemas.PhotoUpdate):
                     db.add(tag)
                 db_photo.tags.append(tag)
                 current_tag_names.add(tag_name)
-            
+
     db.commit()
     db.refresh(db_photo)
     return db_photo
@@ -272,13 +282,13 @@ def assign_face_to_person(db: Session, face_id: int, person_id: int):
 def merge_people(db: Session, source_id: int, target_id: int):
     source = db.query(models.Person).filter(models.Person.id == source_id).first()
     target = db.query(models.Person).filter(models.Person.id == target_id).first()
-    
+
     if not source or not target:
         return None
-        
+
     # Move all faces
     db.query(models.Face).filter(models.Face.person_id == source_id).update({models.Face.person_id: target_id})
-    
+
     # Delete source person
     db.delete(source)
     db.commit()
@@ -290,7 +300,7 @@ def reset_library(db: Session):
     db.execute(models.album_photos.delete())
     db.execute(models.photo_tags.delete())
     db.execute(models.album_tags.delete())
-    
+
     # Clear main tables in correct order to respect foreign keys
     db.query(models.Face).delete(synchronize_session=False)
     db.query(models.Person).delete(synchronize_session=False)
@@ -298,7 +308,7 @@ def reset_library(db: Session):
     db.query(models.Tag).delete(synchronize_session=False)
     db.query(models.Photo).delete(synchronize_session=False)
     # Note: folders are kept so we can re-scan them
-    
+
     db.commit()
 
 def get_settings(db: Session):
