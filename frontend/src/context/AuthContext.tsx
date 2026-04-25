@@ -10,6 +10,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   isLoading: boolean;
   login: (credentials: any) => Promise<void>;
   logout: () => Promise<void>;
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const restoreSession = async () => {
@@ -34,12 +36,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (res.ok) return await res.json();
         throw new Error('No session');
       });
-      
+
       setAccessToken(access_token);
+      setToken(access_token);
       const userData = await api.getMe();
       setUser(userData);
     } catch (err) {
-      console.log("No active session found");
+      console.log('No active session found');
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -52,17 +55,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (credentials: any) => {
     const data = await api.login(credentials);
+    setToken(data.access_token);
     const userData = await api.getMe();
     setUser(userData);
   };
 
   const logout = async () => {
     await api.logout();
+    setToken(null);
     setUser(null);
   };
 
   const value = {
     user,
+    token,
     isLoading,
     login,
     logout,

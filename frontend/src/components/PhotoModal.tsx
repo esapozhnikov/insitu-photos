@@ -17,7 +17,7 @@ interface PhotoModalProps {
 }
 
 export const PhotoModal: React.FC<PhotoModalProps> = ({ photo, onClose, onUpdate, onNext, onPrev }) => {
-  const { isUser } = useAuth();
+  const { isUser, token } = useAuth();
   const [description, setDescription] = useState(photo.description || '');
   const [tags, setTags] = useState((photo.tags || []).map(t => t.name).join(', '));
   const [isSaving, setIsSaving] = useState(false);
@@ -61,7 +61,7 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({ photo, onClose, onUpdate
   };
 
   const handleDownload = () => {
-    window.open(`/api/photos/${photo.id}/download`, '_blank');
+    window.open(`/api/photos/${photo.id}/download?token=${token}`, '_blank');
   };
 
   return (
