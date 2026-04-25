@@ -160,7 +160,7 @@ const AdminView: React.FC = () => {
                       </button>
                       <button 
                         onClick={async () => {
-                          if (window.confirm('Remove this folder? Photos already indexed will remain but won\'t be updated.')) {
+                          if (window.confirm('Remove this folder? All indexed photos from this folder and its subfolders will also be removed from the library.')) {
                             try {
                               await api.deleteFolder(folder.id);
                               fetchData();
