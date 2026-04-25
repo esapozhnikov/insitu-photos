@@ -1,4 +1,5 @@
-﻿from .auth import get_password_hash
+﻿import sqlalchemy as sa
+from .auth import get_password_hash
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import List
