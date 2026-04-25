@@ -13,5 +13,10 @@ export default defineConfig({
       '/api': 'http://api:8000',
       '/cache': 'http://api:8000'
     }
-  }
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+  },
 })
