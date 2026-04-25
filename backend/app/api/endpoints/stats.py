@@ -18,6 +18,18 @@ def get_stats(db: Session = Depends(get_db)):
     
     photos_by_year = {str(int(y)): count for y, count in year_results if y is not None}
 
+    # Fetch active background jobs (running in the last 24h or currently running)
+    active_jobs = db.query(models.BackgroundJob).filter(
+        sa.or_(
+            models.BackgroundJob.status == "running",
+            models.BackgroundJob.completed_at >= sa.func.now() - sa.text("interval '24 hours'")
+        ) if db.bind.dialect.name == 'postgresql' else 
+        sa.or_(
+            models.BackgroundJob.status == "running",
+            models.BackgroundJob.completed_at >= sa.func.datetime('now', '-24 hours')
+        )
+    ).order_by(models.BackgroundJob.started_at.desc()).all()
+
     return {
         "total_photos": db.query(models.Photo).count(),
         "scanned_photos": db.query(models.Photo).filter(models.Photo.is_face_scanned == sa.true()).count(),
@@ -27,7 +39,8 @@ def get_stats(db: Session = Depends(get_db)):
         "total_people": db.query(models.Person).count(),
         "identified_faces": db.query(models.Face).filter(models.Face.person_id.isnot(None)).count(),
         "photos_by_year": photos_by_year,
-        "folders": db.query(models.Folder).all()
+        "folders": db.query(models.Folder).all(),
+        "active_jobs": active_jobs
     }
 
 @router.get("/status", response_model=schemas.SystemStatus)

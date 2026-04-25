@@ -1,6 +1,74 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/client';
-import { BarChart3, Image as ImageIcon, Folder, Users, UserCheck, LayoutGrid } from 'lucide-react';
+import { BarChart3, Image as ImageIcon, Folder, Users, UserCheck, LayoutGrid, Clock, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+
+const JobItem: React.FC<{ job: any }> = ({ job }) => {
+  const [duration, setDuration] = useState<string>('0s');
+
+  useEffect(() => {
+    const updateDuration = () => {
+      const start = new Date(job.started_at).getTime();
+      const end = job.completed_at ? new Date(job.completed_at).getTime() : Date.now();
+      const seconds = Math.floor((end - start) / 1000);
+      
+      if (seconds < 60) setDuration(`${seconds}s`);
+      else if (seconds < 3600) setDuration(`${Math.floor(seconds / 60)}m ${seconds % 60}s`);
+      else setDuration(`${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`);
+    };
+
+    updateDuration();
+    if (job.status === 'running') {
+      const interval = setInterval(updateDuration, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [job.started_at, job.completed_at, job.status]);
+
+  const getStatusIcon = () => {
+    switch (job.status) {
+      case 'running': return <Loader2 size={18} className="text-blue-500 animate-spin" />;
+      case 'completed': return <CheckCircle2 size={18} className="text-emerald-500" />;
+      case 'failed': return <XCircle size={18} className="text-red-500" />;
+      default: return null;
+    }
+  };
+
+  return (
+    <div className="bg-slate-800/30 border border-slate-800 rounded-xl p-4 space-y-3">
+      <div className="flex justify-between items-start">
+        <div className="flex items-center gap-2">
+          {getStatusIcon()}
+          <span className="font-bold text-slate-200">{job.name}</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-slate-500 text-xs font-mono bg-slate-900/50 px-2 py-1 rounded-md">
+          <Clock size={12} /> {duration}
+        </div>
+      </div>
+      
+      <div className="space-y-1.5">
+        <div className="flex justify-between text-xs font-medium">
+          <span className="text-slate-400 italic truncate max-w-[70%]">{job.progress_text || 'In progress...'}</span>
+          <span className={job.status === 'failed' ? 'text-red-400' : 'text-blue-400'}>
+            {job.status === 'failed' ? 'Failed' : `${job.progress_percent}%`}
+          </span>
+        </div>
+        <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+          <div
+            className={`h-full transition-all duration-500 ${
+              job.status === 'failed' ? 'bg-red-500' : 
+              job.status === 'completed' ? 'bg-emerald-500' : 'bg-blue-500'
+            }`}
+            style={{ width: `${job.progress_percent}%` }}
+          ></div>
+        </div>
+      </div>
+      {job.error_message && (
+        <div className="text-[10px] text-red-400 bg-red-400/5 p-2 rounded border border-red-400/10 font-mono">
+          Error: {job.error_message}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const StatsView = () => {
   const [stats, setStats] = useState<any>(null);
@@ -113,6 +181,20 @@ export const StatsView = () => {
           </div>
         </div>
       </div>
+
+      {/* Running Tasks Section */}
+      {stats.active_jobs && stats.active_jobs.length > 0 && (
+        <div className="mt-8 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+          <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-blue-400">
+            <Clock size={24} /> Recent & Running Tasks
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {stats.active_jobs.map((job: any) => (
+              <JobItem key={job.id} job={job} />
+            ))}
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -109,6 +109,17 @@ class FaceBulkAssign(BaseModel):
     person_id: Optional[int] = None
     name: Optional[str] = None
 
+class BackgroundJobResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    status: str
+    progress_text: Optional[str] = None
+    progress_percent: int
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+
 class LibraryStats(BaseModel):
     total_photos: int
     scanned_photos: int
@@ -119,6 +130,7 @@ class LibraryStats(BaseModel):
     identified_faces: int
     photos_by_year: dict[str, int]
     folders: List[FolderResponse] = []
+    active_jobs: List[BackgroundJobResponse] = []
 
 class SystemStatus(BaseModel):
     is_scanning: bool
