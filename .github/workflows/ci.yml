@@ -82,9 +82,10 @@ jobs:
           DATABASE_URL: postgresql://photos:photos_pass@localhost:5432/insitu_photos_test
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: ci_test_secret
-          PHOTO_ROOT: ./temp_photos
-          CACHE_ROOT: ./temp_cache
+          PHOTO_ROOT: /tmp/photos
+          CACHE_ROOT: /tmp/cache
         run: |
+          mkdir -p /tmp/photos /tmp/cache
           cd backend
           pytest tests/
 
