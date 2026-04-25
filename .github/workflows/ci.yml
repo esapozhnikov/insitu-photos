@@ -37,3 +37,70 @@ jobs:
       - name: Lint Frontend (ESLint)
         run: cd frontend && npm run lint || true # Allow warning for now if needed
 
+  test:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_DB: insitu_photos_test
+          POSTGRES_USER: photos
+          POSTGRES_PASSWORD: photos_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Backend Dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install pytest-env pytest-cov
+
+      - name: Run Backend Integration Tests
+        env:
+          DATABASE_URL: postgresql://photos:photos_pass@localhost:5432/insitu_photos_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: ci_test_secret
+          PHOTO_ROOT: /tmp/photos
+          CACHE_ROOT: /tmp/cache
+        run: |
+          mkdir -p /tmp/photos /tmp/cache
+          cd backend
+          pytest tests/
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm install --legacy-peer-deps
+
+      - name: Run Frontend Tests
+        run: |
+          cd frontend
+          npm run test
+
