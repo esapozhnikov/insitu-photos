@@ -10,17 +10,16 @@ if not os.environ.get("PHOTO_ROOT"):
     os.environ["PHOTO_ROOT"] = "./temp_photos"
 if not os.environ.get("CACHE_ROOT"):
     os.environ["CACHE_ROOT"] = "./temp_cache"
+if not os.environ.get("SECRET_KEY"):
+    os.environ["SECRET_KEY"] = "test_secret_key_for_ci"
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text, event
 from sqlalchemy.orm import sessionmaker
 from app.database import Base, get_db
 from app.main import app
 
-from sqlalchemy import text, event
-
 # Use environment variable for test DB, fallback to SQLite for local safety
-# Use connect_args={"check_same_thread": False} for sqlite
 SQLALCHEMY_DATABASE_URL = os.environ["DATABASE_URL"]
 
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
@@ -30,7 +29,8 @@ else:
 
 @event.listens_for(Base.metadata, "before_create")
 def create_vector_extension(target, connection, **kw):
-    if not SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    """Ensure vector extension is created on PostgreSQL, ignore on SQLite."""
+    if connection.dialect.name == "postgresql":
         connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
