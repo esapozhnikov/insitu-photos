@@ -134,6 +134,7 @@ def re_run_recognition_task():
     logger.info(f"DEBUG: Tracer provider: {trace.get_tracer_provider()}")
     with tracer.start_as_current_span("tasks.re_run_recognition") as span:
         db = SessionLocal()
+        job = crud.create_background_job(db, "Re-run Recognition")
         try:
             # Mark as running
             crud.update_setting(db, "ml_re_recognition_running", "true")
@@ -167,18 +168,23 @@ def re_run_recognition_task():
                             faces_recognized_counter.add(1)
 
                 if (i + 1) % 100 == 0 or (i + 1) == total:
-                    progress = f"Processed {i + 1}/{total} faces, {count} assigned so far..."
-                    crud.update_setting(db, "ml_re_recognition_progress", progress)
-                    logger.info(progress)
+                    progress_pct = int(((i + 1) / total) * 100) if total > 0 else 0
+                    progress_text = f"Processed {i + 1}/{total} faces, {count} assigned so far..."
+                    crud.update_setting(db, "ml_re_recognition_progress", progress_text)
+                    crud.update_background_job(db, job.id, progress_percent=progress_pct, progress_text=progress_text)
+                    logger.info(progress_text)
                     db.commit() # Commit periodically to show progress
             
             db.commit()
             span.set_attribute("faces.newly_assigned", count)
-            crud.update_setting(db, "ml_re_recognition_progress", f"Complete! Assigned {count} faces.")
+            final_text = f"Complete! Assigned {count} faces."
+            crud.update_setting(db, "ml_re_recognition_progress", final_text)
+            crud.update_background_job(db, job.id, status="completed", progress_percent=100, progress_text=final_text)
             logger.info(f"Re-recognition complete. Assigned {count} faces.")
         except Exception as e:
             logger.error(f"Error during re-recognition task: {e}")
             span.record_exception(e)
+            crud.update_background_job(db, job.id, status="failed", error_message=str(e))
             db.rollback()
         finally:
             crud.update_setting(db, "ml_re_recognition_running", "false")
@@ -188,10 +194,12 @@ def re_run_recognition_task():
 def full_face_rescan_task():
     with tracer.start_as_current_span("tasks.full_face_rescan") as span:
         db = SessionLocal()
+        job = crud.create_background_job(db, "Full Facial Rescan")
         try:
             # Mark as running
             crud.update_setting(db, "ml_full_rescan_running", "true")
             crud.update_setting(db, "ml_full_rescan_progress", "Clearing database...")
+            crud.update_background_job(db, job.id, progress_text="Clearing database and thumbnails...")
 
             # Reset scanning status for all photos
             db.query(models.Photo).update({models.Photo.is_face_scanned: False})
@@ -224,13 +232,20 @@ def full_face_rescan_task():
             for i, photo in enumerate(photos):
                 process_faces_task.delay(photo.id)
                 if (i + 1) % 100 == 0 or (i + 1) == total:
-                    crud.update_setting(db, "ml_full_rescan_progress", f"Queuing: {i + 1}/{total} photos...")
+                    progress_pct = int(((i + 1) / total) * 100) if total > 0 else 0
+                    progress_text = f"Queuing: {i + 1}/{total} photos..."
+                    crud.update_setting(db, "ml_full_rescan_progress", progress_text)
+                    crud.update_background_job(db, job.id, progress_percent=progress_pct, progress_text=progress_text)
+                    db.commit()
 
-            crud.update_setting(db, "ml_full_rescan_progress", f"Processing {total} photos in background...")
+            final_text = f"Processing {total} photos in background..."
+            crud.update_setting(db, "ml_full_rescan_progress", final_text)
+            crud.update_background_job(db, job.id, status="completed", progress_percent=100, progress_text=final_text)
             logger.info(f"Full facial rescan queuing complete for {total} photos.")
         except Exception as e:
             logger.error(f"Error during full rescan task: {e}")
             span.record_exception(e)
+            crud.update_background_job(db, job.id, status="failed", error_message=str(e))
         finally:
             # NOTE: We set this to false when queuing is done. 
             # The individual process_faces_tasks will continue.
@@ -241,25 +256,38 @@ def full_face_rescan_task():
 def scan_missing_faces_task():
     with tracer.start_as_current_span("tasks.scan_missing_faces") as span:
         db = SessionLocal()
+        job = crud.create_background_job(db, "Scan Missing Faces")
         try:
             crud.update_setting(db, "ml_full_rescan_running", "true")
             crud.update_setting(db, "ml_full_rescan_progress", "Searching for missing scans...")
+            crud.update_background_job(db, job.id, progress_text="Searching for missing scans...")
 
             photos = db.query(models.Photo).filter(models.Photo.is_face_scanned == False).all() # noqa: E712
             total = len(photos)
             span.set_attribute("photos.missing_count", total)
             logger.info(f"Queuing face processing for {total} unscanned photos...")
             
+            if total == 0:
+                 crud.update_background_job(db, job.id, status="completed", progress_percent=100, progress_text="No missing scans found.")
+                 return
+
             for i, photo in enumerate(photos):
                 process_faces_task.delay(photo.id)
                 if (i + 1) % 100 == 0 or (i + 1) == total:
-                    crud.update_setting(db, "ml_full_rescan_progress", f"Queuing missing: {i + 1}/{total} photos...")
+                    progress_pct = int(((i + 1) / total) * 100) if total > 0 else 0
+                    progress_text = f"Queuing missing: {i + 1}/{total} photos..."
+                    crud.update_setting(db, "ml_full_rescan_progress", progress_text)
+                    crud.update_background_job(db, job.id, progress_percent=progress_pct, progress_text=progress_text)
+                    db.commit()
 
-            crud.update_setting(db, "ml_full_rescan_progress", f"Processing {total} missing scans in background...")
+            final_text = f"Processing {total} missing scans in background..."
+            crud.update_setting(db, "ml_full_rescan_progress", final_text)
+            crud.update_background_job(db, job.id, status="completed", progress_percent=100, progress_text=final_text)
             logger.info(f"Scan for missing faces queuing complete for {total} photos.")
         except Exception as e:
             logger.error(f"Error during scan_missing_faces task: {e}")
             span.record_exception(e)
+            crud.update_background_job(db, job.id, status="failed", error_message=str(e))
         finally:
             crud.update_setting(db, "ml_full_rescan_running", "false")
             db.close()
@@ -271,6 +299,7 @@ def index_folder_task(folder_path: str):
         logger.info(f"Starting index_folder_task for {folder_path}")
         db = SessionLocal()
         folder_id = None
+        job = crud.create_background_job(db, f"Index Folder: {os.path.basename(folder_path)}")
         try:
             # Check if this folder is linked to any Smart Sync albums
             folder = crud.get_folder_by_path(db, folder_path)
@@ -290,6 +319,7 @@ def index_folder_task(folder_path: str):
                         models.Album.is_smart_sync
                     ).all()
 
+            crud.update_background_job(db, job.id, progress_text="Scanning directory...")
             photos = scan_directory(folder_path)
             span.set_attribute("photo.count", len(photos))
             logger.info(f"Found {len(photos)} photos in {folder_path}")
@@ -304,6 +334,7 @@ def index_folder_task(folder_path: str):
                 except Exception as e:
                     logger.error(f"Error updating folder total_files: {e}")
 
+            total = len(photos)
             for i, path in enumerate(photos):
                 try:
                     db_photo = crud.get_photo_by_path(db, path)
@@ -329,23 +360,30 @@ def index_folder_task(folder_path: str):
                             album.photos.append(db_photo)
 
                     # Periodically commit to show progress and keep memory low
-                    if (i + 1) % 100 == 0:
+                    if (i + 1) % 100 == 0 or (i + 1) == total:
+                        progress_pct = int(((i + 1) / total) * 100) if total > 0 else 0
+                        progress_text = f"Processed {i + 1}/{total} photos..."
+                        
                         if folder_id:
                             folder = db.query(models.Folder).filter(models.Folder.id == folder_id).first()
                             if folder:
                                 folder.processed_files = i + 1
+                        
+                        crud.update_background_job(db, job.id, progress_percent=progress_pct, progress_text=progress_text)
                         db.commit()
-                        logger.info(f"Processed {i + 1}/{len(photos)} photos...")
+                        logger.info(progress_text)
                 except Exception as e:
                     logger.error(f"Error processing photo {path}: {e}")
                     continue
 
             db.commit()
+            crud.update_background_job(db, job.id, status="completed", progress_percent=100, progress_text=f"Finished processing {len(photos)} photos.")
             logger.info(f"Finished processing all {len(photos)} photos in {folder_path}")
         except Exception as e:
             error_msg = str(e)
             span.record_exception(e)
             logger.error(f"Critical error during index_folder_task for {folder_path}: {error_msg}")
+            crud.update_background_job(db, job.id, status="failed", error_message=error_msg)
             if folder_id:
                 try:
                     folder = db.query(models.Folder).filter(models.Folder.id == folder_id).first()

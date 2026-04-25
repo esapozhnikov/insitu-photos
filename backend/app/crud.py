@@ -343,3 +343,27 @@ def create_user(db: Session, user: schemas.UserCreate):
 
 def get_user_by_username(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first()
+
+def create_background_job(db: Session, name: str):
+    job = models.BackgroundJob(name=name, status="running")
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    return job
+
+def update_background_job(db: Session, job_id: int, progress_percent: int = None, progress_text: str = None, status: str = None, error_message: str = None):
+    job = db.query(models.BackgroundJob).filter(models.BackgroundJob.id == job_id).first()
+    if job:
+        if progress_percent is not None:
+            job.progress_percent = progress_percent
+        if progress_text is not None:
+            job.progress_text = progress_text
+        if status is not None:
+            job.status = status
+            if status in ["completed", "failed"]:
+                job.completed_at = sa.func.now()
+        if error_message is not None:
+            job.error_message = error_message
+        db.commit()
+        db.refresh(job)
+    return job

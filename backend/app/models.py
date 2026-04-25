@@ -1,3 +1,4 @@
+import sqlalchemy as sa
 from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean, ForeignKey, Table, JSON, Enum
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
@@ -127,3 +128,14 @@ class User(Base):
     hashed_password = Column(String)
     role = Column(Enum(UserRole), default=UserRole.VIEWER)
     is_active = Column(Boolean, default=True)
+
+class BackgroundJob(Base):
+    __tablename__ = "background_jobs"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    status = Column(String, default="running", index=True) # running, completed, failed
+    progress_text = Column(String, nullable=True)
+    progress_percent = Column(Integer, default=0)
+    started_at = Column(DateTime, default=sa.func.now())
+    completed_at = Column(DateTime, nullable=True)
+    error_message = Column(String, nullable=True)
