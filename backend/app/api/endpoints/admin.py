@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ...database import get_db
 from ... import crud, config, models, auth
-from ...tasks import re_run_recognition_task, full_face_rescan_task
+from ...tasks import re_run_recognition_task, full_face_rescan_task, scan_missing_faces_task
 from ...telemetry import tracer
 import os
 import shutil
@@ -83,6 +83,22 @@ def full_face_rescan(db: Session = Depends(get_db)):
     full_face_rescan_task.delay()
             
     return {"message": "Full facial rescan started in background."}
+
+@router.post("/scan-missing-faces")
+def scan_missing_faces(db: Session = Depends(get_db)):
+    # Check if already running
+    is_running = crud.get_setting(db, "ml_full_rescan_running")
+    if is_running and is_running.value == "true":
+        return {"message": "A scanning task is already running in background."}
+    
+    # Mark as starting
+    crud.update_setting(db, "ml_full_rescan_running", "true")
+    crud.update_setting(db, "ml_full_rescan_progress", "Queuing missing scans...")
+    
+    # Queue task
+    scan_missing_faces_task.delay()
+            
+    return {"message": "Scan for missing faces started in background."}
 @router.get("/browse")
 def browse_directory(path: str = None):
     photo_root = os.path.normpath(config.settings.photo_root)

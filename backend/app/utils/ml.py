@@ -14,7 +14,9 @@ async def detect_faces(image_path: str, model_name: str = "buffalo_l", min_score
                 "facial-recognition": {
                     "detection": {
                         "modelName": model_name,
-                        "minScore": min_score
+                        "options": {
+                            "minScore": min_score
+                        }
                     },
                     "recognition": {
                         "modelName": model_name
