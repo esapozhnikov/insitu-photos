@@ -10,6 +10,10 @@ class UserRole(str, enum.Enum):
     USER = "user"
     VIEWER = "viewer"
 
+class MediaType(str, enum.Enum):
+    PHOTO = "photo"
+    VIDEO = "video"
+
 # Many-to-Many join table for Album and Photos
 album_photos = Table(
     "album_photos",
@@ -54,6 +58,7 @@ class Photo(Base):
     thumbnail_small = Column(String, nullable=True)
     thumbnail_large = Column(String, nullable=True)
     is_face_scanned = Column(Boolean, default=False, index=True)
+    media_type = Column(Enum(MediaType), default=MediaType.PHOTO, index=True)
     albums = relationship("Album", secondary=album_photos, back_populates="photos")
     faces = relationship("Face", back_populates="photo")
     tags = relationship("Tag", secondary=photo_tags, back_populates="photos")

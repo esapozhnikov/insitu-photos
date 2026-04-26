@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate,
 import { api } from './api/client';
 import { Photo, Album } from './types';
 import { PhotoGrid } from './components/PhotoGrid';
+import { VideosView } from './components/VideosView';
 import AdminView from './components/AdminView';
 import { MapView } from './components/MapView';
 import { PeopleView } from './components/PeopleView';
@@ -346,6 +347,7 @@ const AppContent = () => {
 
         <nav className="flex flex-col gap-2 mt-4 flex-1 overflow-y-auto custom-scrollbar">
           <NavLink to="/photos" icon={ImageIcon} label="Timeline" onClick={() => loadPhotos()} restricted={!isUser} />
+          <NavLink to="/videos" icon={Play} label="Videos" restricted={!isUser} />
           <NavLink to="/people" icon={Users} label="People" restricted={!isUser} />
           <NavLink to="/albums" icon={LayoutGrid} label="Albums" />
           <NavLink to="/folders" icon={Folder} label="Folders" restricted={!isUser} />
@@ -406,6 +408,15 @@ const AppContent = () => {
                   />
                 </div>
               </div>
+            </ProtectedRoute>
+          } />
+          <Route path="/videos" element={
+            <ProtectedRoute allowedRoles={['admin', 'user']}>
+              <VideosView 
+                onPhotoClick={handlePhotoClick} 
+                selectedIds={selectedIds} 
+                onToggleSelect={handleToggleSelect} 
+              />
             </ProtectedRoute>
           } />
           <Route path="/map" element={

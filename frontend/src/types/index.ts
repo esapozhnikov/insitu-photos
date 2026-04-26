@@ -4,6 +4,11 @@ export enum UserRole {
   VIEWER = "viewer"
 }
 
+export enum MediaType {
+  PHOTO = "photo",
+  VIDEO = "video"
+}
+
 export interface User {
   id: number;
   username: string;
@@ -33,6 +38,7 @@ export interface Photo {
   gps_long: number | null;
   manual_lat_override: number | null;
   manual_long_override: number | null;
+  media_type: MediaType;
   tags?: Tag[];
   people?: Person[];
   albums?: Album[];
@@ -95,6 +101,7 @@ export interface PhotoSearch {
   album_id?: number;
   tag_name?: string;
   query?: string;
+  media_type?: MediaType;
 }
 
 export interface SystemStatus {

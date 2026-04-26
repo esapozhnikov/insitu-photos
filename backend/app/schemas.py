@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional, List
-from .models import UserRole
+from .models import UserRole, MediaType
 
 class FolderCreate(BaseModel):
     path: str
@@ -67,6 +67,7 @@ class PhotoResponse(BaseModel):
     gps_long: Optional[float] = None
     manual_lat_override: Optional[float] = None
     manual_long_override: Optional[float] = None
+    media_type: MediaType = MediaType.PHOTO
     tags: List[TagResponse] = []
     people: List[PersonResponse] = []
     albums: List[AlbumResponse] = []
@@ -162,6 +163,7 @@ class PhotoSearch(BaseModel):
     album_id: Optional[int] = None
     tag_name: Optional[str] = None
     query: Optional[str] = None
+    media_type: Optional[MediaType] = None
 
 class SettingResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
