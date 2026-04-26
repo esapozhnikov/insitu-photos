@@ -1,7 +1,6 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from app.utils.metadata import extract_metadata
-from app.models import MediaType
 
 @pytest.fixture
 def mock_exiftool():
