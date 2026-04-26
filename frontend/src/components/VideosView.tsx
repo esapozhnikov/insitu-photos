@@ -19,7 +19,7 @@ export const VideosView: React.FC<VideosViewProps> = ({ onPhotoClick, selectedId
   const loadVideos = async (reset = true) => {
     const skip = reset ? 0 : photos.length;
     try {
-      const results = await api.searchPhotos({ media_type: MediaType.VIDEO }, skip, CHUNK_SIZE);
+      const results = await api.searchPhotos({ media_type: MediaType.video }, skip, CHUNK_SIZE);
       if (reset) {
         setPhotos(results);
       } else {

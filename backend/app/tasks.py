@@ -41,7 +41,7 @@ def generate_thumbnails_task(photo_id: int):
         try:
             db_photo = db.query(models.Photo).filter(models.Photo.id == photo_id).first()
             if db_photo:
-                is_video = db_photo.media_type == models.MediaType.VIDEO
+                is_video = db_photo.media_type == models.MediaType.video
                 thumbnails = generate_thumbnails(db_photo.physical_path, db_photo.checksum, is_video=is_video)
                 crud.update_photo_thumbnails(db, photo_id, thumbnails)
         except Exception as e:
@@ -61,7 +61,7 @@ def process_faces_task(photo_id: int):
                 logger.warning(f"Photo {photo_id} not found for face processing")
                 return
 
-            if db_photo.media_type == models.MediaType.VIDEO:
+            if db_photo.media_type == models.MediaType.video:
                 logger.info(f"Skipping face processing for video {photo_id}")
                 db_photo.is_face_scanned = True
                 db.commit()

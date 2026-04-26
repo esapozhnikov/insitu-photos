@@ -5,8 +5,8 @@ export enum UserRole {
 }
 
 export enum MediaType {
-  PHOTO = "photo",
-  VIDEO = "video"
+  photo = "photo",
+  video = "video"
 }
 
 export interface User {

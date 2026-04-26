@@ -67,7 +67,7 @@ class PhotoResponse(BaseModel):
     gps_long: Optional[float] = None
     manual_lat_override: Optional[float] = None
     manual_long_override: Optional[float] = None
-    media_type: MediaType = MediaType.PHOTO
+    media_type: MediaType = MediaType.photo
     tags: List[TagResponse] = []
     people: List[PersonResponse] = []
     albums: List[AlbumResponse] = []
