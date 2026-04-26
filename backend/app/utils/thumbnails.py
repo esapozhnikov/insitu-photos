@@ -1,4 +1,5 @@
 import os
+import subprocess
 from PIL import Image
 from ..config import settings
 
@@ -7,37 +8,65 @@ THUMBNAIL_SIZES = {
     "large": (1200, 1200)
 }
 
-def generate_thumbnails(photo_path: str, checksum: str):
-    """Generates thumbnails for a photo and returns their relative paths."""
-    thumbnails = {}
-    
-    with Image.open(photo_path) as img:
-        # Handle orientation if EXIF present
-        try:
-            from PIL import ImageOps
-            img = ImageOps.exif_transpose(img)
-        except Exception:
-            pass
+def extract_video_frame(video_path: str, output_path: str):
+    """Extracts a frame from a video at 1s using ffmpeg."""
+    cmd = [
+        'ffmpeg', '-i', video_path,
+        '-ss', '00:00:01.000',
+        '-vframes', '1',
+        output_path, '-y'
+    ]
+    # Use capture_output=True to keep logs clean, check=True to raise on error
+    subprocess.run(cmd, check=True, capture_output=True)
 
-        for size_name, dimensions in THUMBNAIL_SIZES.items():
-            thumb_img = img.copy()
-            thumb_img.thumbnail(dimensions)
-            
-            # Ensure RGB for JPEG
-            if thumb_img.mode in ("RGBA", "P"):
-                thumb_img = thumb_img.convert("RGB")
-            
-            # Storage path: /cache/thumbnails/<size>/<checksum>.jpg
-            relative_dir = os.path.join("thumbnails", size_name)
-            absolute_dir = os.path.join(settings.cache_root, relative_dir)
-            os.makedirs(absolute_dir, exist_ok=True)
-            
-            filename = f"{checksum}.jpg"
-            absolute_path = os.path.join(absolute_dir, filename)
-            relative_path = os.path.join(relative_dir, filename)
-            
-            thumb_img.save(absolute_path, "JPEG", quality=85)
-            thumbnails[size_name] = relative_path
+def generate_thumbnails(photo_path: str, checksum: str, is_video: bool = False):
+    """Generates thumbnails for a photo or video and returns their relative paths."""
+    thumbnails = {}
+    source_path = photo_path
+    temp_frame = None
+    
+    if is_video:
+        temp_frame = os.path.join(settings.cache_root, f"temp_{checksum}.jpg")
+        try:
+            extract_video_frame(photo_path, temp_frame)
+            source_path = temp_frame
+        except Exception as e:
+            print(f"Failed to extract video frame for {photo_path}: {e}")
+            return {}
+
+    try:
+        with Image.open(source_path) as img:
+            # Handle orientation if EXIF present (only for photos usually)
+            if not is_video:
+                try:
+                    from PIL import ImageOps
+                    img = ImageOps.exif_transpose(img)
+                except Exception:
+                    pass
+
+            for size_name, dimensions in THUMBNAIL_SIZES.items():
+                thumb_img = img.copy()
+                thumb_img.thumbnail(dimensions)
+                
+                # Ensure RGB for JPEG
+                if thumb_img.mode in ("RGBA", "P"):
+                    thumb_img = thumb_img.convert("RGB")
+                
+                # Storage path: /cache/thumbnails/<size>/<checksum>.jpg
+                relative_dir = os.path.join("thumbnails", size_name)
+                absolute_dir = os.path.join(settings.cache_root, relative_dir)
+                os.makedirs(absolute_dir, exist_ok=True)
+                
+                filename = f"{checksum}.jpg"
+                absolute_path = os.path.join(absolute_dir, filename)
+                relative_path = os.path.join(relative_dir, filename)
+                
+                thumb_img.save(absolute_path, "JPEG", quality=85)
+                thumbnails[size_name] = relative_path
+    finally:
+        # Cleanup temporary frame
+        if temp_frame and os.path.exists(temp_frame):
+            os.remove(temp_frame)
             
     return thumbnails
 

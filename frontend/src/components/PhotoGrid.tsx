@@ -52,7 +52,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ photos, onPhotoClick, sele
               {isSelected ? <CheckCircle2 size={18} /> : <Circle size={18} />}
             </button>
 
-            <div onClick={() => onPhotoClick(photo, index)} className="w-full h-full">
+            <div onClick={() => onPhotoClick(photo, index)} className="w-full h-full relative">
               {photo.thumbnail_small ? (
                 <img 
                   src={`/cache/${photo.thumbnail_small}`} 
@@ -63,6 +63,15 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ photos, onPhotoClick, sele
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-slate-700 text-xs italic">Processing...</div>
+              )}
+
+              {/* Video Play Icon Overlay */}
+              {photo.media_type === 'video' && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="bg-black/30 backdrop-blur-sm p-3 rounded-full border border-white/20 group-hover:scale-110 transition-transform shadow-lg">
+                    <Play className="text-white fill-white" size={24} />
+                  </div>
+                </div>
               )}
               
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2 pointer-events-none">

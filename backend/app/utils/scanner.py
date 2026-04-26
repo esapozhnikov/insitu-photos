@@ -1,7 +1,7 @@
 import os
 from typing import List
 
-SUPPORTED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'}
+SUPPORTED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.mp4', '.mov'}
 
 def scan_directory(directory_path: str) -> List[str]:
     photo_paths = []

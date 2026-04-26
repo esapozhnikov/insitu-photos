@@ -35,16 +35,25 @@ def extract_metadata(file_path: str):
                 metadata = metadata_list[0]
             
             timestamp = None
-            dt_str = metadata.get('EXIF:DateTimeOriginal') or metadata.get('File:FileModifyDate')
+            dt_str = metadata.get('EXIF:DateTimeOriginal') or metadata.get('QuickTime:CreateDate') or metadata.get('File:FileModifyDate')
             if dt_str:
                 try:
                     # Handle cases with or without timezone
                     timestamp = datetime.strptime(dt_str[:19], '%Y:%m:%d %H:%M:%S')
                 except Exception:
                     pass
-                    
-            with Image.open(file_path) as img:
-                width, height = img.size
+            
+            # Determine media type
+            mime_type = metadata.get('File:MIMEType', '')
+            is_video = mime_type.startswith('video/') or os.path.splitext(file_path)[1].lower() in {'.mp4', '.mov'}
+            media_type = "video" if is_video else "photo"
+
+            if is_video:
+                width = metadata.get('File:ImageWidth') or metadata.get('QuickTime:ImageWidth')
+                height = metadata.get('File:ImageHeight') or metadata.get('QuickTime:ImageHeight')
+            else:
+                with Image.open(file_path) as img:
+                    width, height = img.size
                 
             # Parse GPS coordinates using Ref tags
             gps_lat = metadata.get('EXIF:GPSLatitude')
@@ -86,6 +95,7 @@ def extract_metadata(file_path: str):
                             people.append(keywords)
 
             return {
+                "media_type": media_type,
                 "timestamp": timestamp,
                 "width": width,
                 "height": height,

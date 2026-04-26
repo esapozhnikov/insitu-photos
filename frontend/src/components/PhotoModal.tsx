@@ -82,13 +82,23 @@ export const PhotoModal: React.FC<PhotoModalProps> = ({ photo, onClose, onUpdate
       )}
 
       <div className="flex w-full h-full p-4 gap-4 overflow-hidden">
-        {/* Large Photo Display */}
+        {/* Large Photo/Video Display */}
         <div className="flex-1 flex items-center justify-center relative">
-          <img 
-            src={`/cache/${photo.thumbnail_large}`} 
-            className="max-w-full max-h-full object-contain shadow-2xl rounded-lg"
-            alt=""
-          />
+          {photo.media_type === 'video' ? (
+            <video 
+              src={`/api/photos/${photo.id}/download?token=${token}`} 
+              controls 
+              autoPlay 
+              loop
+              className="max-w-full max-h-full shadow-2xl rounded-lg"
+            />
+          ) : (
+            <img 
+              src={`/cache/${photo.thumbnail_large}`} 
+              className="max-w-full max-h-full object-contain shadow-2xl rounded-lg"
+              alt=""
+            />
+          )}
         </div>
 
         {/* Metadata Sidebar */}
