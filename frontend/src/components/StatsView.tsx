@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/client';
-import { BarChart3, Image as ImageIcon, Folder, Users, UserCheck, LayoutGrid, Clock, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { BarChart3, Image as ImageIcon, Film, Folder, Users, UserCheck, LayoutGrid, Clock, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
 const JobItem: React.FC<{ job: any }> = ({ job }) => {
   const [duration, setDuration] = useState<string>('0s');
@@ -90,6 +90,7 @@ export const StatsView = () => {
 
   const cards = [
     { label: 'Total Photos', value: stats.total_photos, icon: <ImageIcon className="text-blue-500" /> },
+    { label: 'Total Videos', value: stats.total_videos, icon: <Film className="text-blue-500" /> },
     { label: 'Folders', value: stats.total_folders, icon: <Folder className="text-amber-500" /> },
     { label: 'Albums', value: stats.total_albums, icon: <LayoutGrid className="text-purple-500" /> },
     { label: 'Faces Detected', value: stats.total_faces, icon: <Users className="text-emerald-500" /> },

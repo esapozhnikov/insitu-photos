@@ -123,6 +123,7 @@ class BackgroundJobResponse(BaseModel):
 
 class LibraryStats(BaseModel):
     total_photos: int
+    total_videos: int
     scanned_photos: int
     total_folders: int
     total_albums: int
