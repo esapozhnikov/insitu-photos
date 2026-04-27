@@ -230,22 +230,22 @@ def full_face_rescan_task():
                     except Exception as e:
                         logger.error(f'Failed to delete {file_path}. Reason: {e}')
 
-            # 3. Queue face processing for all photos
-            photos = db.query(models.Photo).all()
-            total = len(photos)
-            span.set_attribute("photos.count", total)
-            logger.info(f"Queuing face processing for {total} photos...")
+            # 3. Queue face processing for all items
+            media_items = db.query(models.Photo).all()
+            total = len(media_items)
+            span.set_attribute("items.count", total)
+            logger.info(f"Queuing face processing for {total} items...")
             
-            for i, photo in enumerate(photos):
-                process_faces_task.delay(photo.id)
+            for i, item in enumerate(media_items):
+                process_faces_task.delay(item.id)
                 if (i + 1) % 100 == 0 or (i + 1) == total:
                     progress_pct = int(((i + 1) / total) * 100) if total > 0 else 0
-                    progress_text = f"Queuing: {i + 1}/{total} photos..."
+                    progress_text = f"Queuing: {i + 1}/{total} items..."
                     crud.update_setting(db, "ml_full_rescan_progress", progress_text)
                     crud.update_background_job(db, job.id, progress_percent=progress_pct, progress_text=progress_text)
                     db.commit()
 
-            final_text = f"Processing {total} photos in background..."
+            final_text = f"Processing {total} items in background..."
             crud.update_setting(db, "ml_full_rescan_progress", final_text)
             crud.update_background_job(db, job.id, status="completed", progress_percent=100, progress_text=final_text)
             logger.info(f"Full facial rescan queuing complete for {total} photos.")
@@ -327,22 +327,22 @@ def index_folder_task(folder_path: str):
                     ).all()
 
             crud.update_background_job(db, job.id, progress_text="Scanning directory...")
-            photos = scan_directory(folder_path)
-            span.set_attribute("photo.count", len(photos))
-            logger.info(f"Found {len(photos)} photos in {folder_path}")
+            media_files = scan_directory(folder_path)
+            span.set_attribute("media.count", len(media_files))
+            logger.info(f"Found {len(media_files)} items in {folder_path}")
 
             if folder_id:
                 try:
                     folder = db.query(models.Folder).filter(models.Folder.id == folder_id).first()
                     if folder:
-                        folder.total_files = len(photos)
+                        folder.total_files = len(media_files)
                         folder.processed_files = 0
                         db.commit()
                 except Exception as e:
                     logger.error(f"Error updating folder total_files: {e}")
 
-            total = len(photos)
-            for i, path in enumerate(photos):
+            total = len(media_files)
+            for i, path in enumerate(media_files):
                 try:
                     db_photo = crud.get_photo_by_path(db, path)
                     if not db_photo:
@@ -350,8 +350,14 @@ def index_folder_task(folder_path: str):
                             photo_span.set_attribute("file.path", path)
                             checksum = get_checksum(path)
                             metadata = extract_metadata(path)
+                            
+                            if metadata.get("is_live_photo_video"):
+                                continue
+
                             # Remove 'people' as it's not a field in the Photo model
                             metadata.pop("people", None)
+                            metadata.pop("is_live_photo_video", None)
+                            
                             photo_data = {
                                 "physical_path": path,
                                 "checksum": checksum,
@@ -369,7 +375,7 @@ def index_folder_task(folder_path: str):
                     # Periodically commit to show progress and keep memory low
                     if (i + 1) % 100 == 0 or (i + 1) == total:
                         progress_pct = int(((i + 1) / total) * 100) if total > 0 else 0
-                        progress_text = f"Processed {i + 1}/{total} photos..."
+                        progress_text = f"Processed {i + 1}/{total} media files..."
                         
                         if folder_id:
                             folder = db.query(models.Folder).filter(models.Folder.id == folder_id).first()
@@ -384,8 +390,8 @@ def index_folder_task(folder_path: str):
                     continue
 
             db.commit()
-            crud.update_background_job(db, job.id, status="completed", progress_percent=100, progress_text=f"Finished processing {len(photos)} photos.")
-            logger.info(f"Finished processing all {len(photos)} photos in {folder_path}")
+            crud.update_background_job(db, job.id, status="completed", progress_percent=100, progress_text=f"Finished processing {len(media_files)} media files.")
+            logger.info(f"Finished processing all {len(media_files)} media files in {folder_path}")
         except Exception as e:
             error_msg = str(e)
             span.record_exception(e)

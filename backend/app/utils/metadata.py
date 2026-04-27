@@ -48,6 +48,27 @@ def extract_metadata(file_path: str):
             is_video = mime_type.startswith('video/') or os.path.splitext(file_path)[1].lower() in {'.mp4', '.mov'}
             media_type = "video" if is_video else "photo"
 
+            # Exclude Live Photo previews (short videos < 3.5s)
+            if is_video:
+                duration = metadata.get('QuickTime:Duration') or metadata.get('File:Duration') or metadata.get('Composite:Duration')
+                if duration:
+                    try:
+                        if isinstance(duration, str):
+                            # Handle "3.41 s" or "0:00:03" formats
+                            if ':' in duration:
+                                parts = duration.split(':')
+                                duration_val = float(parts[-1]) + int(parts[-2])*60 + (int(parts[-3])*3600 if len(parts)>2 else 0)
+                            else:
+                                duration_val = float(duration.split()[0])
+                        else:
+                            duration_val = float(duration)
+                        
+                        if duration_val < 3.5:
+                            logger.info(f"Probable live photo preview detected ({duration_val}s): {file_path}")
+                            return {"is_live_photo_video": True}
+                    except (ValueError, TypeError, IndexError):
+                        pass
+
             if is_video:
                 width = metadata.get('File:ImageWidth') or metadata.get('QuickTime:ImageWidth')
                 height = metadata.get('File:ImageHeight') or metadata.get('QuickTime:ImageHeight')

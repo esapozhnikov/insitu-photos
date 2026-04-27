@@ -180,6 +180,9 @@ def search_photos(db: Session, filters: schemas.PhotoSearch, skip: int = 0, limi
     if filters.tag_name:
         query = query.join(models.Photo.tags).filter(models.Tag.name == filters.tag_name)
 
+    if filters.media_type:
+        query = query.filter(models.Photo.media_type == filters.media_type)
+
     if filters.query:
         # If person_id is set, we skip the text query to avoid the "0 photos" bug
         # where the person's name isn't in the metadata.

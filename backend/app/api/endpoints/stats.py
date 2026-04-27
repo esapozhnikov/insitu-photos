@@ -31,7 +31,8 @@ def get_stats(db: Session = Depends(get_db)):
     ).order_by(models.BackgroundJob.started_at.desc()).all()
 
     return {
-        "total_photos": db.query(models.Photo).count(),
+        "total_photos": db.query(models.Photo).filter(models.Photo.media_type == models.MediaType.photo).count(),
+        "total_videos": db.query(models.Photo).filter(models.Photo.media_type == models.MediaType.video).count(),
         "scanned_photos": db.query(models.Photo).filter(models.Photo.is_face_scanned == sa.true()).count(),
         "total_folders": db.query(models.Folder).count(),
         "total_albums": db.query(models.Album).count(),
